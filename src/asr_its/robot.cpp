@@ -6,7 +6,7 @@ Robot::Robot(): RosRate(100)
     ROS_INFO("Debug");
     SubButton   = Nh.subscribe("controller/button", 16, &Robot::CallbackButton, this);
     SubAxis     = Nh.subscribe("controller/axis", 6, &Robot::CallbackAxis, this);
-    PubSpeed    = Nh.advertise<asr_its::ControllerData>("robot/cmd_vel", 10);
+    PubSpeed    = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
 
     for (int i = 0; i <=2 ; i++){
         MsgSpeed.data.push_back(0);

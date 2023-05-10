@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>asr_its</name>
+  <name>main_controller</name>
   <version>0.0.0</version>
-  <description>The asr_its package</description>
+  <description>The Main Controller package for ASR-ITS</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

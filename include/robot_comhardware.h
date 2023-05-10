@@ -10,7 +10,7 @@
 #include "geometry_msgs/Twist.h"
 #include <iostream>
 
-#include "asr_its/ControllerData.h"
+#include "main_controller/ControllerData.h"
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
 
@@ -56,10 +56,10 @@ private:
     geometry_msgs::Quaternion OdomQuat;
     geometry_msgs::Twist      RobotVel;
     
-    asr_its::ControllerData     MsgSpeed;
-    ros::MultiThreadedSpinner   Mts;
+    main_controller::ControllerData     MsgSpeed;
+    ros::MultiThreadedSpinner           Mts;
 
     void SerialTransmitEvent(const ros::TimerEvent &event);
     void SerialReceiveEvent(const ros::TimerEvent &event);
-    void SpeedSubCallback(const asr_its::ControllerData &msg);
+    void SpeedSubCallback(const main_controller::ControllerData &msg);
 };

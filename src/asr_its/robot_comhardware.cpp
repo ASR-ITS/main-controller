@@ -166,7 +166,7 @@ void Comhardware::SerialReceiveEvent(const ros::TimerEvent &event)
     }
 };
 
-void Comhardware::SpeedSubCallback(const asr_its::ControllerData &msg)
+void Comhardware::SpeedSubCallback(const main_controller::ControllerData &msg)
 {
     StatusControl = msg.StatusControl;
     RobotSpeed[0] = msg.data[0];

@@ -7,7 +7,7 @@
 #include "geometry_msgs/Pose2D.h"
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
-#include "asr_its/ControllerData.h"
+#include "main_controller/ControllerData.h"
 
 
 //std-libraries
@@ -45,8 +45,8 @@ private:
     std_msgs::Int32     StikButton;
     nav_msgs::Odometry  Odom;
 
-    std_msgs::Int16MultiArray   StikAxis;
-    asr_its::ControllerData     MsgSpeed;
+    std_msgs::Int16MultiArray           StikAxis;
+    main_controller::ControllerData     MsgSpeed;
 
     void CallbackButton (const std_msgs::Int32 &MsgBtn);
     void CallbackAxis   (const std_msgs::Int16MultiArray &MsgAxis);
