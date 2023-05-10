@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- <node pkg="asr_its" type="main_node" name="main_node" /> -->
+    <node pkg="asr_its" type="robot_node" name="robot_node" output="screen" />
+    <!-- <node pkg="asr_its" type="robot_node" name="robot_node">
+        <remap from="/robot/cmd_vel" to="/robot/cmd_vel_2"/>
+    </node> -->
+
+    <node pkg="asr_its" type="controller_node" name="controller_node" />
+    <node pkg="asr_its" type="tf_broadcaster_node" name="odom_to_base_broadcaster_node" />
+    <node pkg="asr_its" type="robot_comhardware_node" name="comhardware_node" />
+    <include file="$(find rplidar_ros)/launch/rplidar.launch" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster_node" args="0.09 0 0 3.4 0 0 base_link laser 100"/> -->
+</launch>
