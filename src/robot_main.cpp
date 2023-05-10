@@ -1,5 +1,6 @@
 #include <ros/ros.h>
-#include "robot.h"
+// #include "robot.h"
+#include "control_layout.h"
 
 int main(int argc, char** argv)
 {

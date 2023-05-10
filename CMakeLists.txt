@@ -134,7 +134,8 @@ include_directories(
 # )
 add_library(joystick src/asr_its/joystick.cc)
 add_library(rs232 src/asr_its/rs232.c)
-add_library(robot src/asr_its/robot.cpp)
+# add_library(robot src/asr_its/robot.cpp)
+add_library(robot src/asr_its/control_layout.cpp)
 add_library(robot_comhardware src/asr_its/robot_comhardware.cpp)
 
 ## Add cmake target dependencies of the library

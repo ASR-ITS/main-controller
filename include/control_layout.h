@@ -77,7 +77,7 @@ private:
     sensor_msgs::JoyFeedback        MsgJoyLED_B;
     sensor_msgs::JoyFeedbackArray   MsgJoyFeedbackArray;
     nav_msgs::Odometry              Odom;
-    asr_its::ControllerData         MsgSpeed;
+    main_controller::ControllerData         MsgSpeed;
 
     void JoyCallback            (const sensor_msgs::Joy::ConstPtr &msgJoy);
     void JoyBatteryCallback     (const sensor_msgs::BatteryState::ConstPtr &MsgJoyBatt);

@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include "control_layout.h"
 
-Robot::Robot(): RosRate(10)
+Robot::Robot(): RosRate(100)
 {
     // Initialize
     ROS_INFO("Robot Main Controller");
@@ -9,7 +9,7 @@ Robot::Robot(): RosRate(10)
     // Subscriber & Publisher
     SubJoy          = Nh.subscribe("/joy", 18, &Robot::JoyCallback, this);
     SubJoyBattery   = Nh.subscribe("/battery", 10, &Robot::JoyBatteryCallback, this);
-    PubSpeed        = Nh.advertise<asr_its::ControllerData>("robot/cmd_vel", 10);
+    PubSpeed        = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
     PubJoyFeedback  = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
 
     // Initialize Speed Variable
@@ -76,8 +76,8 @@ Robot::Robot(): RosRate(10)
                 MsgJoyLED_B.intensity = 0.13;
 
                 // Set Robot Speed from Joy Axis
-                RobotSpeed[0] = Controller.Axis[0] * 20;
-                RobotSpeed[1] = -1 * Controller.Axis[1] * 20;
+                RobotSpeed[0] = -1 * Controller.Axis[0] * 20;
+                RobotSpeed[1] = Controller.Axis[1] * 20;
                 RobotSpeed[2] = Controller.Axis[2] * 15;
             }
             else
