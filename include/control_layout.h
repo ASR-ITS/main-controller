@@ -87,6 +87,9 @@ private:
     Pose_t Robot_Pose, Robot_Pose_2;
 
     ros::NodeHandle     Nh;
+    ros::Subscriber     SubJoy;
+    ros::Subscriber     SubJoyBattery;
+    ros::Subscriber     SubOdom;
     ros::Publisher      PubSpeed;
     ros::Publisher      PubJoyFeedback;
     ros::Subscriber     Sub_Odom;

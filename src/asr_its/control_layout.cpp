@@ -41,6 +41,12 @@ Robot::Robot(): RosRate(5)
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_G);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_B);
 
+    // Read path from csv file
+    std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
+    std::cout << "Waypoints file path: " << filePath << std::endl;
+    ReadPath(filePath, targetPath);
+    std::cout << "Read waypoints completed" << ", size of path = " << targetPath.size() << std::endl;
+
     while(ros::ok()){
         
         // Set Status Control using TRIANGLE Button
