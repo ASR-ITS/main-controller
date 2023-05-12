@@ -6,7 +6,7 @@
     <arg name="use_standard_msgs" default="true" />
     <arg name="autorepeat_rate" default="0" if="$(arg use_standard_msgs)" />
 
-    <node pkg="ds4_driver" type="ds4_driver_node.py" name="ds4_driver" output="screen" >
+    <node pkg="ds4_driver" type="ds4_driver_node.py" name="ds4_driver" >
         <rosparam command="load" file="$(find ds4_driver)/config/params.yaml" />
 
         <param name="device_addr" value="$(arg addr)" />
@@ -30,7 +30,7 @@
 
     <!-- <node pkg="main_controller" type="controller_node" name="controller_node" /> -->
 
-    <!-- <node pkg="main_controller" type="tf_broadcaster_node" name="odom_to_base_broadcaster_node" /> -->
+    <node pkg="main_controller" type="tf_broadcaster_node" name="odom_to_base_broadcaster_node" />
     <node pkg="main_controller" type="robot_comhardware_node" name="comhardware_node" />
     
     <include file="$(find rplidar_ros)/launch/rplidar.launch" />
