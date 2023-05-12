@@ -153,7 +153,7 @@ add_executable(comhardware_node src/comhardware.cpp)
 add_executable(tf_broadcaster_node src/broadcaster.cpp)
 add_executable(robot_node src/robot_main.cpp)
 add_executable(robot_comhardware_node src/robot_comhardware.cpp)
-
+add_executable(robot_dummy_node src/robot_dummy.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -175,6 +175,7 @@ target_link_libraries(comhardware_node rs232 ${catkin_LIBRARIES})
 target_link_libraries(tf_broadcaster_node ${catkin_LIBRARIES})
 target_link_libraries(robot_node robot ${catkin_LIBRARIES})
 target_link_libraries(robot_comhardware_node robot_comhardware rs232 ${catkin_LIBRARIES})
+target_link_libraries(robot_dummy_node ${catkin_LIBRARIES})
 
 #############
 ## Install ##

@@ -52,21 +52,13 @@ private:
         uint8_t prev_button[18];
     };
 
-    typedef struct point_t
-    {
-        float x;
-        float y;
-        float theta;
-    } point_t;
-
-    std::queue<point_t> targetPath;
-    struct Path{
+    struct Path_t{
         std::queue<float> x;
         std::queue<float> y;
         std::queue<float> z;
     };
 
-    struct Pose{
+    struct Pose_t{
         float x;
         float y;
         float z;
@@ -91,15 +83,13 @@ private:
     } DS4_Button;
     
     DS4_T Controller;
-    Path path;
-    Pose robot_pose;
+    Path_t Robot_Path;
+    Pose_t Robot_Pose, Robot_Pose_2;
 
     ros::NodeHandle     Nh;
-    ros::Subscriber     SubJoy;
-    ros::Subscriber     SubJoyBattery;
-    ros::Subscriber     SubOdom;
     ros::Publisher      PubSpeed;
     ros::Publisher      PubJoyFeedback;
+    ros::Subscriber     Sub_Odom;
     ros::Subscriber     Sub_Joy;
     ros::Subscriber     Sub_Joy_Battery;
     ros::Subscriber     Sub_Path;
@@ -114,20 +104,19 @@ private:
     sensor_msgs::JoyFeedback        MsgJoyLED_B;
     sensor_msgs::JoyFeedbackArray   MsgJoyFeedbackArray;
     nav_msgs::Odometry              Odom;
-    main_controller::ControllerData         MsgSpeed;
-    geometry_msgs::Pose2D           robotPose;
-    main_controller::ControllerData         vel_msg;
+    main_controller::ControllerData vel_msg;
 
-    void ReadPath(std::string fileName, std::queue<point_t> &path);
-    geometry_msgs::Pose2D PurePursuit(geometry_msgs::Pose2D robotPose, std::queue<point_t> &path, float offset);
-    geometry_msgs::Twist PointToPointPID(geometry_msgs::Pose2D robotPose, geometry_msgs::Pose2D targetPose);
+    void ReadPath(std::string fileName, Path_t &path);
+    void ClearPath(Path_t &path);
+    Pose_t PurePursuit(Pose_t robotPose, Path_t &path, float offset);
+    Pose_t PointToPointPID(Pose_t robotPose, Pose_t targetPose, float maxSpeed);
 
     void JoyCallback            (const sensor_msgs::Joy::ConstPtr &msgJoy);
     void JoyBatteryCallback     (const sensor_msgs::BatteryState::ConstPtr &MsgJoyBatt);
-    void OdomCallback           (const nav_msgs::OdometryConstPtr &msg);
-
-    void Joy_Callback             (const sensor_msgs::Joy::ConstPtr &joy_msg);
-    void Joy_Battery_Callback     (const sensor_msgs::BatteryState::ConstPtr &joy_batt_msg);
-    void Path_Callback            (const nav_msgs::Path::ConstPtr &path_msg);
-    void Pose_Callback            (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);
+    
+    void Odom_Callback          (const nav_msgs::OdometryConstPtr &msg);
+    void Joy_Callback           (const sensor_msgs::Joy::ConstPtr &joy_msg);
+    void Joy_Battery_Callback   (const sensor_msgs::BatteryState::ConstPtr &joy_batt_msg);
+    void Path_Callback          (const nav_msgs::Path::ConstPtr &path_msg);
+    void Pose_Callback          (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);
 };

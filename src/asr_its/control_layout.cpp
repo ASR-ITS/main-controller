@@ -1,30 +1,28 @@
 #include <ros/ros.h>
 #include "control_layout.h"
 
-Robot::Robot(): RosRate(100)
+Robot::Robot(): RosRate(5)
 {
     // Initialize
     ROS_INFO("Robot Main Controller");
     
     // Subscriber & Publisher
-    SubJoy          = Nh.subscribe("/joy", 18, &Robot::JoyCallback, this);
-    SubJoyBattery   = Nh.subscribe("/battery", 10, &Robot::JoyBatteryCallback, this);
-    SubOdom         = Nh.subscribe("/odom", 10, &Robot::OdomCallback, this);
-    PubSpeed        = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
-    PubJoyFeedback  = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
-    Sub_Joy            = Nh.subscribe("/joy", 18, &Robot::Joy_Callback, this);
-    Sub_Joy_Battery    = Nh.subscribe("/battery", 10, &Robot::Joy_Battery_Callback, this);
+    Sub_Joy             = Nh.subscribe("/joy", 18, &Robot::Joy_Callback, this);
+    Sub_Joy_Battery     = Nh.subscribe("/battery", 10, &Robot::Joy_Battery_Callback, this);
+    Sub_Odom            = Nh.subscribe("/odom", 10, &Robot::Odom_Callback, this);
+    Sub_Pose            = Nh.subscribe("/amcl_pose", 10, &Robot::Pose_Callback, this);
+    Sub_Path            = Nh.subscribe("/path", 10, &Robot::Path_Callback, this);
 
-    Sub_Path           = Nh.subscribe("/path", 10, &Robot::Path_Callback, this);
-    Sub_Pose           = Nh.subscribe("/amcl_pose", 10, &Robot::Pose_Callback, this);
-
-    Pub_Vel            = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
-    Pub_Joy_Feedback   = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
+    Pub_Vel             = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
+    Pub_Joy_Feedback    = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
 
     // Initialize Speed Variable
     for (int i = 0; i <=2 ; i++){
         vel_msg.data.push_back(0);
     }
+
+    // Initialize Robot Pose
+    Robot_Pose.x = Robot_Pose.y = Robot_Pose.z = 0;
 
     // Initialize Joystick LED Feedback
     MsgJoyLED_R.type      = 0;
@@ -43,12 +41,6 @@ Robot::Robot(): RosRate(100)
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_G);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_B);
 
-    // Read path from csv file
-    std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
-    std::cout << "Waypoints file path: " << filePath << std::endl;
-    ReadPath(filePath, targetPath);
-    std::cout << "Read waypoints completed" << ", size of path = " << targetPath.size() << std::endl;
-
     while(ros::ok()){
         
         // Set Status Control using TRIANGLE Button
@@ -60,8 +52,6 @@ Robot::Robot(): RosRate(100)
         Controller.prev_button[triangle] = Controller.Buttons[triangle];
 
         // Print Robot Speed to Screen
-        std::cout << "Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << MsgSpeed.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
-        // std::cout << "Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << MsgSpeed.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
         std::cout << "Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
 
         // Set Mode Using OPTIONS Button
@@ -79,19 +69,24 @@ Robot::Robot(): RosRate(100)
             MsgJoyLED_G.intensity = 0.1;
             MsgJoyLED_B.intensity = 0.53;
 
+            // Load Path from CSV File
+            std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
+            ClearPath(Robot_Path);
+            ReadPath(filePath, Robot_Path);
+            int pathSize = Robot_Path.x.size();
+            std::cout << "Read waypoints completed" << ", size of path = " << pathSize << std::endl;
+
             // Pure Pursuit Mode //
+            Pose_t targetPose;
+            Pose_t speedRobot;
 
-            geometry_msgs::Pose2D targetPose;
-            geometry_msgs::Twist speedRobot;
+            // THIS targetPose FORCED TO GO TO ORIGIN (0,0) IF THERE'S NO PATH EXIST
+            targetPose = PurePursuit(Robot_Pose, Robot_Path, 0.5);
+            speedRobot = PointToPointPID(Robot_Pose, targetPose, 30);
 
-            targetPose = PurePursuit(robotPose, targetPath, 0.5);
-            speedRobot = PointToPointPID(robotPose, targetPose);
-
-            RobotSpeed[0] = (int) 25 * speedRobot.linear.x;
-            RobotSpeed[1] = (int) 25 * speedRobot.linear.y;
-            RobotSpeed[2] = (int) 25 * speedRobot.angular.z;
-
-            std::cout << "Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << MsgSpeed.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
+            RobotSpeed[0] = (int) speedRobot.x;
+            RobotSpeed[1] = (int) speedRobot.y;
+            RobotSpeed[2] = (int) speedRobot.z;
 
             // Set Robot Speed to Zero (CHECK AGAIN FOR PURE PURSUIT IMPLEMENTATION)
             for(int i = 0; i<=2; i++)
@@ -103,6 +98,7 @@ Robot::Robot(): RosRate(100)
         // Go to Manual Control Mode
         else
         {
+            ClearPath(Robot_Path);
             if (vel_msg.StatusControl)
             {
                 // Set LED Feedback RED for Joystick Lock Mode
@@ -170,11 +166,10 @@ void Robot::Joy_Battery_Callback (const sensor_msgs::BatteryState::ConstPtr &joy
     JoyBatt = joy_batt_msg->percentage;
 }
 
-<<<<<<< HEAD
-void Robot::OdomCallback(const nav_msgs::OdometryConstPtr &msg){
+void Robot::Odom_Callback(const nav_msgs::OdometryConstPtr &msg){
 
-    robotPose.x = msg->pose.pose.position.x;
-    robotPose.y = msg->pose.pose.position.y;
+    Robot_Pose_2.x = msg->pose.pose.position.x;
+    Robot_Pose_2.y = msg->pose.pose.position.y;
     
     tf::Quaternion q(
         msg->pose.pose.orientation.x,
@@ -188,11 +183,11 @@ void Robot::OdomCallback(const nav_msgs::OdometryConstPtr &msg){
 
     m.getRPY(roll, pitch, yaw);
     
-    robotPose.theta = yaw;
+    Robot_Pose_2.z = yaw;
 
 }
 
-void Robot::ReadPath(std::string fileName, std::queue<point_t> &path){
+void Robot::ReadPath(std::string fileName, Path_t &path){
     std::ifstream file(fileName);
     std::string line;
 
@@ -202,7 +197,6 @@ void Robot::ReadPath(std::string fileName, std::queue<point_t> &path){
 
         while(getline(file, line)){
             // Add temp point variable
-            point_t tempPoint;
 
             // Create a stringstream to read the line
             std::stringstream ss(line);
@@ -210,85 +204,83 @@ void Robot::ReadPath(std::string fileName, std::queue<point_t> &path){
 
             // Read each comma-separated value from the line
             getline(ss, token, ',');
-            tempPoint.x = stof(token);
+            path.x.push(stof(token));
 
             getline(ss, token, ',');
-            tempPoint.y = stof(token);
+            path.y.push(stof(token));
 
             getline(ss, token, ',');
-            tempPoint.theta = stof(token);
-
-            // Push into robot's path variable
-            path.push(tempPoint);
+            path.z.push(stof(token));
         }
     }
 }
 
-geometry_msgs::Pose2D Robot::PurePursuit(geometry_msgs::Pose2D robotPose, std::queue<point_t> &path, float offset)
+void Robot::ClearPath(Path_t &path){
+    path.x.empty();
+    path.y.empty();
+    path.z.empty();
+}
+
+Robot::Pose_t Robot::PurePursuit(Pose_t robotPose, Path_t &path, float offset)
 {
-    
-    int length = path.size();
+
+    Pose_t targetPose;
+    targetPose = robotPose;
+
     float distance = 0;
     static float epsilon = 0.1;
+    int pathLeft = path.x.size();
 
-    geometry_msgs::Pose2D out;
-    out.x = out.y = out.theta = 0;
-    point_t targetPoint;
-
-    targetPoint = path.front();
-    distance = sqrt(pow((targetPoint.x - robotPose.x), 2) + pow((targetPoint.y - robotPose.y), 2));
+    targetPose.x = path.x.front();
+    targetPose.y = path.y.front();
+    targetPose.z = path.z.front();
+    distance = sqrt(pow((targetPose.x - robotPose.x), 2) + pow((targetPose.y - robotPose.y), 2));
     
-    if(path.size() > 1){    
-        while(distance < offset && path.size() > 1){
-            distance = sqrt(pow((targetPoint.x - robotPose.x), 2) + pow((targetPoint.y - robotPose.y), 2));
-            std::cout << "size = " << path.size() << " dist = " << distance << std::endl;
-            path.pop();
-            targetPoint = path.front();
+    if(pathLeft > 1){    
+        while(distance < offset && pathLeft > 1){
+            path.x.pop(); targetPose.x = path.x.front();
+            path.y.pop(); targetPose.y = path.y.front();  
+            path.z.pop(); targetPose.z = path.z.front();
+            distance = sqrt(pow((targetPose.x - robotPose.x), 2) + pow((targetPose.y - robotPose.y), 2));
         }
     }
     else{
-        targetPoint = path.front();
+        targetPose.x = path.x.front();
+        targetPose.y = path.y.front();
+        targetPose.z = path.z.front();
     }
 
-    out.x = targetPoint.x;
-    out.y = targetPoint.y;
-    out.theta = targetPoint.theta;
-
     // Debug
-    std::cout << "path left = " << length << std::endl;
-    std::cout << "robotPose.x = " << robotPose.x << " robotPose.y = " << robotPose.y << " robotPose.theta = " << robotPose.theta << std::endl;
-    std::cout << "targetPoint.x = " << targetPoint.x << " targetPoint.y = " << targetPoint.y << " targetPoint.theta = " << targetPoint.theta << std::endl;
+    std::cout << "path left = " << pathLeft << std::endl;
+    std::cout << "robotPose.x = " << robotPose.x << " robotPose.y = " << robotPose.y << " robotPose.theta = " << robotPose.z << std::endl;
+    std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z << std::endl;
     std::cout << "distance = " << distance << std::endl;
 
-    return out;
+    return targetPose;
 }
 
-geometry_msgs::Twist Robot::PointToPointPID(geometry_msgs::Pose2D robotPose, geometry_msgs::Pose2D targetPose)
+Robot::Pose_t Robot::PointToPointPID(Pose_t robotPose, Pose_t targetPose, float maxSpeed)
 {
-    geometry_msgs::Twist out;
-    out.linear.x = 0;
-    out.linear.y = 0;
-    out.angular.z = 0;
+    Pose_t speedRobot;
+    speedRobot.x = speedRobot.y = speedRobot.z = 0;
 
-    float speedRobot[3] = {0, 0, 0};
-    float maxSpeed = 25;
+    float output[3] = {0, 0, 0};
 
     float proportional[3] = {0, 0, 0};
     float integral[3] = {0, 0, 0};
     float derivative [3]= {0, 0, 0};
-    float output[3] = {0, 0, 0};
 
     float error[3] = {0, 0, 0};
     static float prevError[3] = {0, 0, 0};
     static float sumError[3] = {0, 0, 0};
 
-    float kp[3] = {1, 1, 1};
+    float kp[3] = {40, 40, 40};
     float ki[3] = {0, 0, 0};
     float kd[3] = {0, 0, 0};
 
     error[0] = targetPose.x - robotPose.x;
     error[1] = targetPose.y - robotPose.y;
-    error[2] = targetPose.theta - robotPose.theta; 
+    error[2] = targetPose.z - robotPose.z; 
 
     if(abs(error[2]) >= MATH_PI){
         if(error[2] > 0){
@@ -308,54 +300,52 @@ geometry_msgs::Twist Robot::PointToPointPID(geometry_msgs::Pose2D robotPose, geo
 
         prevError[i] = error[i];
 
-        speedRobot[i] = proportional[i] + integral[i] + derivative[i];
+        output[i] = proportional[i] + integral[i] + derivative[i];
     }
 
     // Speed Limiter and Normalizer
-    if(abs(speedRobot[0]) >= maxSpeed || abs(speedRobot[1]) >= maxSpeed || abs(speedRobot[2]) >= maxSpeed){
+    if(abs(output[0]) >= maxSpeed || abs(output[1]) >= maxSpeed || abs(output[2]) >= maxSpeed){
         float max = 0;
         for(int i=0 ; i<=2 ; i++){
-            if(abs(speedRobot[i]) > max){
-                max = abs(speedRobot[i]);
+            if(abs(output[i]) > max){
+                max = abs(output[i]);
             }
         }
         for(int i=0 ; i<=2 ; i++){
-            speedRobot[i] = speedRobot[i] * (maxSpeed / max);
+            output[i] = output[i] * (maxSpeed / max);
         }
     }
 
     // Speed Limiter Only
     for(int i=0 ; i<=2 ; i++){
-        if(speedRobot[i] >= maxSpeed){
-            speedRobot[i] = maxSpeed;
+        if(output[i] >= maxSpeed){
+            output[i] = maxSpeed;
         }
-        else if(speedRobot[i] <= -maxSpeed){
-            speedRobot[i] = -maxSpeed;
+        else if(output[i] <= -maxSpeed){
+            output[i] = -maxSpeed;
         }
     }
 
-    out.linear.x = speedRobot[0];
-    out.linear.y = speedRobot[1];
-    out.angular.z = speedRobot[2];
+    speedRobot.x = output[0];
+    speedRobot.y = output[1];
+    speedRobot.z = output[2];
 
-    return out;
+    return speedRobot;
 }
 
 
-
-=======
 void Robot::Path_Callback (const nav_msgs::Path::ConstPtr &path_msg)
 {
     for(int i = 0; i < path_msg->poses.size(); ++i)
     {
-        path.x.push(path_msg->poses[i].pose.position.x);
-        path.y.push(path_msg->poses[i].pose.position.y);
-        path.z.push(path_msg->poses[i].pose.position.z);       
+        Robot_Path.x.push(path_msg->poses[i].pose.position.x);
+        Robot_Path.y.push(path_msg->poses[i].pose.position.y);
+        Robot_Path.z.push(path_msg->poses[i].pose.position.z);       
     }
 }
 void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg)
 {
-    robot_pose.x = pose_msg->pose.pose.position.x;
-    robot_pose.y = pose_msg->pose.pose.position.y;
-    robot_pose.z = pose_msg->pose.pose.position.z;    
+    Robot_Pose.x = pose_msg->pose.pose.position.x;
+    Robot_Pose.y = pose_msg->pose.pose.position.y;
+    Robot_Pose.z = pose_msg->pose.pose.position.z;    
 }
