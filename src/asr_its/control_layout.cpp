@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include "control_layout.h"
 
-Robot::Robot(): RosRate(5)
+Robot::Robot(): RosRate(100)
 {
     // Initialize
     ROS_INFO("Robot Main Controller");
@@ -40,13 +40,6 @@ Robot::Robot(): RosRate(5)
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_R);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_G);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_B);
-
-    // Read path from csv file
-    std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
-    std::cout << "Waypoints file path: " << filePath << std::endl;
-    ReadPath(filePath, targetPath);
-    std::cout << "Read waypoints completed" << ", size of path = " << targetPath.size() << std::endl;
-
     while(ros::ok()){
         
         // Set Status Control using TRIANGLE Button
@@ -75,12 +68,17 @@ Robot::Robot(): RosRate(5)
             MsgJoyLED_G.intensity = 0.1;
             MsgJoyLED_B.intensity = 0.53;
 
-            // Load Path from CSV File
-            std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
-            ClearPath(Robot_Path);
-            ReadPath(filePath, Robot_Path);
-            int pathSize = Robot_Path.x.size();
-            std::cout << "Read waypoints completed" << ", size of path = " << pathSize << std::endl;
+            // Trigger to reset path
+            if (Controller.Buttons[circle] == 0 && Controller.prev_button[circle] == 1)
+            {
+                // Load Path from CSV File
+                std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
+                ClearPath(Robot_Path);
+                ReadPath(filePath, Robot_Path);
+                int pathSize = Robot_Path.x.size();
+                std::cout << "Read waypoints completed" << ", size of path = " << pathSize << std::endl;
+            }
+            Controller.prev_button[circle] = Controller.Buttons[circle];
 
             // Pure Pursuit Mode //
             Pose_t targetPose;
@@ -95,10 +93,10 @@ Robot::Robot(): RosRate(5)
             RobotSpeed[2] = (int) speedRobot.z;
 
             // Set Robot Speed to Zero (CHECK AGAIN FOR PURE PURSUIT IMPLEMENTATION)
-            for(int i = 0; i<=2; i++)
-            {
-                RobotSpeed[i] = 0;
-            }
+            // for(int i = 0; i<=2; i++)
+            // {
+            //     RobotSpeed[i] = 0;
+            // }
         }
 
         // Go to Manual Control Mode
