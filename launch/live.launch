@@ -30,8 +30,8 @@
 
   <param name="use_sim_time" type="bool" value="False"/>
   
-  <node if="$(arg hector)" pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster" 
-    args="0.0 0.0 0.0 3.1416 0.0 0.0 base_link laser 100" />
+  <!-- <node if="$(arg hector)" pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster" 
+    args="0.0 0.0 0.0 3.1416 0.0 0.0 base_link laser 100" /> -->
 
   <!-- Odometry from laser scans -->
   <!-- If argument "hector" is true, we use Hector mapping to generate odometry for us -->
@@ -94,9 +94,9 @@
 
   <group ns="rtabmap">
     <node if="$(arg camera)" pkg="nodelet" type="nodelet" name="rgbd_sync" args="standalone rtabmap_ros/rgbd_sync" output="screen">
-      <remap from="rgb/image"       to="/zed/zed_node/rgb/image_rect_color"/>
-      <remap from="depth/image"     to="/zed/zed_node/depth/depth_registered"/>
-      <remap from="rgb/camera_info" to="/zed/zed_node/rgb/camera_info"/>
+      <remap from="rgb/image"       to="/zed2i/zed_node/rgb/image_rect_color"/>
+      <remap from="depth/image"     to="/zed2i/zed_node/depth/depth_registered"/>
+      <remap from="rgb/camera_info" to="/zed2i/zed_node/rgb/camera_info"/>
       <param name="rgb/image_transport"   type="string" value="compressed"/>
       <param name="depth/image_transport" type="string" value="compressedDepth"/>
     </node>

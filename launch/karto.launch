@@ -24,10 +24,11 @@
   
   <!-- Run RPLIDAR Node -->
   <include file="$(find rplidar_ros)/launch/rplidar.launch" />
-  <!-- <node pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster_node" args="0.09 0 0 3.4 0 0 base_link laser 100"/> -->
+  <node pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster_node" args="0.09 0 0 3.4 0 0 base_link laser 100"/>
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find main_controller)/config/rviz.config.rviz"/>
 
   <!-- slam_karto -->
   <node pkg="slam_karto" type="slam_karto" name="slam_karto" output="screen">
-    <rosparam command="load" file="$(find asr_its)/config/karto_mapper_params.yaml" />
+    <rosparam command="load" file="$(find main_controller)/config/karto_mapper_params.yaml" />
   </node>
 </launch>
