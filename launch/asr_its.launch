@@ -19,22 +19,17 @@
 
     <node pkg="main_controller" type="robot_node" name="robot_node" output="screen" />
 
-    <!-- <node pkg="asr_its" type="robot_node" name="robot_node">
-        <remap from="/robot/cmd_vel" to="/robot/cmd_vel_2"/>
-    </node> -->
-
     <!-- Run the map server -->
     <arg name="map_file" default="$(find path_planner)/maps/map_amcl.yaml"/>
     <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
 
-
-    <!-- <node pkg="main_controller" type="controller_node" name="controller_node" /> -->
-
-    <!-- <node pkg="main_controller" type="tf_broadcaster_node" name="odom_to_base_broadcaster_node" /> -->
+    <!-- Run the stm32 communication node -->
+    <node pkg="main_controller" type="tf_broadcaster_node" name="odom_to_base_broadcaster_node" />
     <node pkg="main_controller" type="robot_comhardware_node" name="comhardware_node" />
-    
+
+    <!-- Run the lidar node -->    
     <include file="$(find rplidar_ros)/launch/rplidar.launch" />
     <include file="$(find main_controller)/launch/amcl.launch" />
-    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find main_controller)/config/rviz.config.rviz"/>
-    <!-- <node pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster_node" args="0.09 0 0 3.4 0 0 base_link laser 100"/> -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find main_controller)/config/rviz.config.rviz"/> -->
+    <!-- <node pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster_node" args="0.09 0 0 3.4 0 0 base_link laser 100"/>
 </launch>

@@ -4,21 +4,27 @@
 
 #include "std_msgs/Int32MultiArray.h"
 #include "std_msgs/Float32MultiArray.h"
+
 #include "geometry_msgs/Pose2D.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
+
 #include <nav_msgs/Odometry.h>
-#include <tf/transform_broadcaster.h>
+#include <nav_msgs/Path.h>
 
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/BatteryState.h>
 #include <sensor_msgs/JoyFeedback.h>
 #include <sensor_msgs/JoyFeedbackArray.h>
 
+#include <tf/transform_broadcaster.h>
 #include "main_controller/ControllerData.h"
 
 
 //STD-Libraries
 #include <iostream>
 #include <string>
+#include <queue>
 #include "stdio.h"
 #include "stdlib.h"
 
@@ -33,15 +39,20 @@ private:
     int     RobotSpeed[3] = {0, 0, 0};
     uint8_t StatusControl = 0;
     uint8_t GuidedMode    = 0;
-    float   JoyBatt;
-    float   PosisiOdom[3];
-    float   OffsetPos[3];
+    float   JoyBatt       = 0.0;
+    float   Pose[3]       = {0.0, 0.0, 0.0};
     
     struct DS4_T 
     {
         uint8_t Buttons[18];
         float   Axis[4] = {0, 0, 0, 0};
         uint8_t prev_button[18];
+    };
+
+    struct Path{
+        std::queue<float> x;
+        std::queue<float> y;
+        std::queue<float> z;
     };
 
     typedef enum
@@ -63,24 +74,27 @@ private:
     } DS4_Button;
     
     DS4_T Controller;
+    Path path;
 
     ros::NodeHandle     Nh;
-    ros::Subscriber     SubJoy;
-    ros::Subscriber     SubJoyBattery;
-    ros::Subscriber     OdomSub;
-    ros::Publisher      PubSpeed;
-    ros::Publisher      PubJoyFeedback;
+    ros::Subscriber     Sub_Joy;
+    ros::Subscriber     Sub_Joy_Battery;
+    ros::Subscriber     Sub_Path;
+    ros::Subscriber     Sub_Pose;
+
+    ros::Publisher      Pub_Vel;
+    ros::Publisher      Pub_Joy_Feedback;
     ros::Rate           RosRate;
 
     sensor_msgs::JoyFeedback        MsgJoyLED_R;
     sensor_msgs::JoyFeedback        MsgJoyLED_G;
     sensor_msgs::JoyFeedback        MsgJoyLED_B;
     sensor_msgs::JoyFeedbackArray   MsgJoyFeedbackArray;
-    nav_msgs::Odometry              Odom;
-    main_controller::ControllerData         MsgSpeed;
 
-    void JoyCallback            (const sensor_msgs::Joy::ConstPtr &msgJoy);
-    void JoyBatteryCallback     (const sensor_msgs::BatteryState::ConstPtr &MsgJoyBatt);
-    void OdomCallback           (const nav_msgs::OdometryConstPtr &msg);
+    main_controller::ControllerData         vel_msg;
 
+    void Joy_Callback             (const sensor_msgs::Joy::ConstPtr &joy_msg);
+    void Joy_Battery_Callback     (const sensor_msgs::BatteryState::ConstPtr &joy_batt_msg);
+    void Path_Callback            (const nav_msgs::Path::ConstPtr &path_msg);
+    void Pose_Callback            (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);
 };
