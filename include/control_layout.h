@@ -5,22 +5,32 @@
 #include "std_msgs/Int32MultiArray.h"
 #include "std_msgs/Float32MultiArray.h"
 #include "geometry_msgs/Pose2D.h"
+#include "geometry_msgs/Twist.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include <nav_msgs/Odometry.h>
-#include <tf/transform_broadcaster.h>
+#include <nav_msgs/Path.h>
 
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/BatteryState.h>
 #include <sensor_msgs/JoyFeedback.h>
 #include <sensor_msgs/JoyFeedbackArray.h>
 
+#include <tf/transform_broadcaster.h>
 #include "main_controller/ControllerData.h"
 
 
 //STD-Libraries
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <string>
+#include <queue>
 #include "stdio.h"
 #include "stdlib.h"
+#include "queue"
+
+#define MATH_PI 3.1415926535897932384626433832795
 
 class Robot
 {
@@ -33,15 +43,33 @@ private:
     int     RobotSpeed[3] = {0, 0, 0};
     uint8_t StatusControl = 0;
     uint8_t GuidedMode    = 0;
-    float   JoyBatt;
-    float   PosisiOdom[3];
-    float   OffsetPos[3];
+    float   JoyBatt       = 0.0;
     
     struct DS4_T 
     {
         uint8_t Buttons[18];
         float   Axis[4] = {0, 0, 0, 0};
         uint8_t prev_button[18];
+    };
+
+    typedef struct point_t
+    {
+        float x;
+        float y;
+        float theta;
+    } point_t;
+
+    std::queue<point_t> targetPath;
+    struct Path{
+        std::queue<float> x;
+        std::queue<float> y;
+        std::queue<float> z;
+    };
+
+    struct Pose{
+        float x;
+        float y;
+        float z;
     };
 
     typedef enum
@@ -63,13 +91,22 @@ private:
     } DS4_Button;
     
     DS4_T Controller;
+    Path path;
+    Pose robot_pose;
 
     ros::NodeHandle     Nh;
     ros::Subscriber     SubJoy;
     ros::Subscriber     SubJoyBattery;
-    ros::Subscriber     OdomSub;
+    ros::Subscriber     SubOdom;
     ros::Publisher      PubSpeed;
     ros::Publisher      PubJoyFeedback;
+    ros::Subscriber     Sub_Joy;
+    ros::Subscriber     Sub_Joy_Battery;
+    ros::Subscriber     Sub_Path;
+    ros::Subscriber     Sub_Pose;
+
+    ros::Publisher      Pub_Vel;
+    ros::Publisher      Pub_Joy_Feedback;
     ros::Rate           RosRate;
 
     sensor_msgs::JoyFeedback        MsgJoyLED_R;
@@ -78,9 +115,19 @@ private:
     sensor_msgs::JoyFeedbackArray   MsgJoyFeedbackArray;
     nav_msgs::Odometry              Odom;
     main_controller::ControllerData         MsgSpeed;
+    geometry_msgs::Pose2D           robotPose;
+    main_controller::ControllerData         vel_msg;
+
+    void ReadPath(std::string fileName, std::queue<point_t> &path);
+    geometry_msgs::Pose2D PurePursuit(geometry_msgs::Pose2D robotPose, std::queue<point_t> &path, float offset);
+    geometry_msgs::Twist PointToPointPID(geometry_msgs::Pose2D robotPose, geometry_msgs::Pose2D targetPose);
 
     void JoyCallback            (const sensor_msgs::Joy::ConstPtr &msgJoy);
     void JoyBatteryCallback     (const sensor_msgs::BatteryState::ConstPtr &MsgJoyBatt);
     void OdomCallback           (const nav_msgs::OdometryConstPtr &msg);
 
+    void Joy_Callback             (const sensor_msgs::Joy::ConstPtr &joy_msg);
+    void Joy_Battery_Callback     (const sensor_msgs::BatteryState::ConstPtr &joy_batt_msg);
+    void Path_Callback            (const nav_msgs::Path::ConstPtr &path_msg);
+    void Pose_Callback            (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);
 };

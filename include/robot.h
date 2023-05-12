@@ -39,7 +39,7 @@ private:
     ros::NodeHandle     Nh;
     ros::Subscriber     SubButton;
     ros::Subscriber     SubAxis;
-    ros::Subscriber     OdomSub;
+    ros::Subscriber     SubOdom;
     ros::Publisher      PubSpeed;
     ros::Rate           RosRate;
     std_msgs::Int32     StikButton;
