@@ -110,6 +110,7 @@ private:
     main_controller::ControllerData vel_msg;
 
     void ReadPath(std::string fileName, Path_t &path);
+    void ReadPathRelative(std::string fileName, Path_t &path, Pose_t robotPose);
     void ClearPath(Path_t &path);
     Pose_t PurePursuit(Pose_t robotPose, Path_t &path, float offset);
     Pose_t PointToPointPID(Pose_t robotPose, Pose_t targetPose, float maxSpeed);

@@ -40,6 +40,7 @@ Robot::Robot(): RosRate(100)
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_R);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_G);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_B);
+
     while(ros::ok()){
         
         // Set Status Control using TRIANGLE Button
@@ -74,7 +75,8 @@ Robot::Robot(): RosRate(100)
                 // Load Path from CSV File
                 std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
                 ClearPath(Robot_Path);
-                ReadPath(filePath, Robot_Path);
+                // ReadPath(filePath, Robot_Path);
+                ReadPathRelative(filePath, Robot_Path, Robot_Pose);
                 int pathSize = Robot_Path.x.size();
                 std::cout << "Read waypoints completed" << ", size of path = " << pathSize << std::endl;
             }
@@ -84,19 +86,26 @@ Robot::Robot(): RosRate(100)
             Pose_t targetPose;
             Pose_t speedRobot;
 
-            // THIS targetPose FORCED TO GO TO ORIGIN (0,0) IF THERE'S NO PATH EXIST
-            targetPose = PurePursuit(Robot_Pose, Robot_Path, 0.5);
+            // Prevent going to origin if there's no path
+            if(Robot_Path.x.size() <= 0)
+                targetPose = Robot_Pose;
+            else
+                targetPose = PurePursuit(Robot_Pose, Robot_Path, 0.5);
+
             speedRobot = PointToPointPID(Robot_Pose, targetPose, 30);
 
             RobotSpeed[0] = (int) speedRobot.x;
             RobotSpeed[1] = (int) speedRobot.y;
             RobotSpeed[2] = (int) speedRobot.z;
 
+            std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z << std::endl;
+            std::cout << "PURE PURSUIT Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
+
             // Set Robot Speed to Zero (CHECK AGAIN FOR PURE PURSUIT IMPLEMENTATION)
-            // for(int i = 0; i<=2; i++)
-            // {
-            //     RobotSpeed[i] = 0;
-            // }
+            for(int i = 0; i<=2; i++)
+            {
+                RobotSpeed[i] = 0;
+            }
         }
 
         // Go to Manual Control Mode
@@ -219,6 +228,35 @@ void Robot::ReadPath(std::string fileName, Path_t &path){
     }
 }
 
+void Robot::ReadPathRelative(std::string fileName, Path_t &path, Pose_t robotPose){
+    std::ifstream file(fileName);
+    std::string line;
+
+    if(file.is_open()){
+        // Read and discard the first line
+        getline(file, line);
+
+        while(getline(file, line)){
+            // Add temp point variable
+
+            // Create a stringstream to read the line
+            std::stringstream ss(line);
+            std::string token;
+
+            // Read each comma-separated value from the line
+            getline(ss, token, ',');
+            path.x.push(stof(token)+robotPose.x);
+
+            getline(ss, token, ',');
+            path.y.push(stof(token)+robotPose.y);
+
+            getline(ss, token, ',');
+            path.z.push(stof(token)+robotPose.z);
+        }
+    }
+}
+
+
 void Robot::ClearPath(Path_t &path){
     path.x.empty();
     path.y.empty();
@@ -256,9 +294,9 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robotPose, Path_t &path, float offset)
 
     // Debug
     std::cout << "path left = " << pathLeft << std::endl;
-    std::cout << "robotPose.x = " << robotPose.x << " robotPose.y = " << robotPose.y << " robotPose.theta = " << robotPose.z << std::endl;
-    std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z << std::endl;
-    std::cout << "distance = " << distance << std::endl;
+    // std::cout << "robotPose.x = " << robotPose.x << " robotPose.y = " << robotPose.y << " robotPose.theta = " << robotPose.z << std::endl;
+    // std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z << std::endl;
+    // std::cout << "distance = " << distance << std::endl;
 
     return targetPose;
 }

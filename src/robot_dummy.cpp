@@ -26,6 +26,8 @@ int main(int argc, char** argv) {
     cmd_odom.pose.pose.position.y = 0.0;
     cmd_odom.pose.pose.position.z = 0.0;
 
+    odom_pub.publish(cmd_odom);
+
     while (ros::ok()) {
         int c = getch();
         switch (c) {
