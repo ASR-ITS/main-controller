@@ -1,7 +1,18 @@
-global_costmap:
-  global_frame: odom
-  update_frequency: 30.0
-  publish_frequency: 30.0
-  transform_tolerance: 0.2
-  resolution: 0.1
+global_frame: map
+robot_base_frame: base_link
+update_frequency: 5.0
+publish_frequency: 1.0
+
+plugins:  
+  - {name: static_map,       type: "costmap_2d::StaticLayer"}
+  - {name: obstacles,        type: "costmap_2d::VoxelLayer"}
+
+static_map:  
+  map_topic: /map
+  unknown_cost_value: -1
+  lethal_cost_threshold: 50
+
+obstacles:  
+  observation_sources: base_scan
+  base_scan: {data_type: LaserScan,    topic: /scan,    sensor_frame: laser,    clearing: false,    marking: true}
 
