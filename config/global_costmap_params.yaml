@@ -14,5 +14,5 @@ static_map:
 
 obstacles:  
   observation_sources: base_scan
-  base_scan: {data_type: LaserScan,    topic: /scan,    sensor_frame: laser,    clearing: false,    marking: true}
+  base_scan: {data_type: LaserScan,    topic: /scan,    sensor_frame: laser,    clearing: true,    marking: true}
 
