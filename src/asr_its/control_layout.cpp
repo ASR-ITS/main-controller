@@ -73,8 +73,8 @@ Robot::Robot(): RosRate(100)
             if (Controller.Buttons[circle] == 0 && Controller.prev_button[circle] == 1)
             {
                 // Load Path from CSV File
-                std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
                 ClearPath(Robot_Path);
+                std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
                 // ReadPath(filePath, Robot_Path);
                 ReadPathRelative(filePath, Robot_Path, Robot_Pose);
                 int pathSize = Robot_Path.x.size();
@@ -92,20 +92,21 @@ Robot::Robot(): RosRate(100)
             else
                 targetPose = PurePursuit(Robot_Pose, Robot_Path, 0.5);
 
-            speedRobot = PointToPointPID(Robot_Pose, targetPose, 30);
+            speedRobot = PointToPointPID(Robot_Pose, targetPose, 20);
 
             RobotSpeed[0] = (int) speedRobot.x;
             RobotSpeed[1] = (int) speedRobot.y;
             RobotSpeed[2] = (int) speedRobot.z;
 
+            std::cout << "Robot_Pose.x = " << Robot_Pose.x << "Robot_Pose.y = " << Robot_Pose.y << " Robot_Pose.z = " << Robot_Pose.z << std::endl;
             std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z << std::endl;
             std::cout << "PURE PURSUIT Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
 
             // Set Robot Speed to Zero (CHECK AGAIN FOR PURE PURSUIT IMPLEMENTATION)
-            for(int i = 0; i<=2; i++)
-            {
-                RobotSpeed[i] = 0;
-            }
+            // for(int i = 0; i<=2; i++)
+            // {
+            //     RobotSpeed[i] = 0;
+            // }
         }
 
         // Go to Manual Control Mode
@@ -231,37 +232,50 @@ void Robot::ReadPath(std::string fileName, Path_t &path){
 void Robot::ReadPathRelative(std::string fileName, Path_t &path, Pose_t robotPose){
     std::ifstream file(fileName);
     std::string line;
+    std::cout << "path.x = " << path.x.front() << " path.y = " << path.y.front() << std::endl;
 
     if(file.is_open()){
         // Read and discard the first line
         getline(file, line);
 
         while(getline(file, line)){
-            // Add temp point variable
+            // Add temp variable
+            float temp_point;
 
-            // Create a stringstream to read the line
+            std::cout <<" path.y.front() = " << path.y.front() << std::endl;
+
+            // Create a stringstream to read the linex
             std::stringstream ss(line);
             std::string token;
 
             // Read each comma-separated value from the line
             getline(ss, token, ',');
-            path.x.push(stof(token)+robotPose.x);
+            temp_point = stof(token);
+            path.x.push(temp_point + robotPose.x);
+
+            std::cout << "size.y = " << path.y.size() << std::endl;
 
             getline(ss, token, ',');
-            path.y.push(stof(token)+robotPose.y);
+            temp_point = stof(token);
+            path.y.push(temp_point + robotPose.y);
+
+            std::cout << "pose.y = " << robotPose.y << " input.y = " << temp_point << " path.y.front() = " << path.y.front() << std::endl; 
 
             getline(ss, token, ',');
-            path.z.push(stof(token)+robotPose.z);
-        }
+            temp_point = stof(token);
+            path.z.push(temp_point + robotPose.z);
+       }
     }
 }
 
 
 void Robot::ClearPath(Path_t &path){
-    path.x.empty();
-    path.y.empty();
-    path.z.empty();
-}
+    while(!path.x.empty()){
+        path.x.pop();
+        path.y.pop();
+        path.z.pop();
+        }
+    }
 
 Robot::Pose_t Robot::PurePursuit(Pose_t robotPose, Path_t &path, float offset)
 {
