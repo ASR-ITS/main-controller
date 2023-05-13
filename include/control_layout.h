@@ -28,6 +28,8 @@
 #include "stdio.h"
 #include "stdlib.h"
 
+#define MATH_PI 3.1415926535897932384626433832795
+
 class Robot
 {
 public:
@@ -41,20 +43,20 @@ private:
     uint8_t GuidedMode    = 0;
     float   JoyBatt       = 0.0;
     
-    struct DS4_T 
+    struct DS4_t 
     {
         uint8_t Buttons[18];
         float   Axis[4] = {0, 0, 0, 0};
         uint8_t prev_button[18];
     };
 
-    struct Path{
+    struct Path_t{
         std::queue<float> x;
         std::queue<float> y;
         std::queue<float> z;
     };
 
-    struct Pose{
+    struct Pose_t{
         float x;
         float y;
         float z;
@@ -78,9 +80,9 @@ private:
         DPadDown  = 17
     } DS4_Button;
     
-    DS4_T Controller;
-    Path path;
-    Pose robot_pose;
+    DS4_t Controller;
+    Path_t path;
+    Pose_t robot_pose;
 
     ros::NodeHandle     Nh;
     ros::Subscriber     Sub_Joy;
@@ -98,6 +100,13 @@ private:
     sensor_msgs::JoyFeedbackArray   MsgJoyFeedbackArray;
 
     main_controller::ControllerData         vel_msg;
+
+    // void ReadPath(std::string fileName, Path_t &path);
+    // void ReadPathRelative(std::string fileName, Path_t &path, Pose_t robotPose);
+    
+    void ClearPath(Path_t &path);
+    Pose_t PurePursuit(Pose_t robotPose, Path_t &path, float offset);
+    Pose_t PointToPointPID(Pose_t robotPose, Pose_t targetPose, float maxSpeed);
 
     void Joy_Callback             (const sensor_msgs::Joy::ConstPtr &joy_msg);
     void Joy_Battery_Callback     (const sensor_msgs::BatteryState::ConstPtr &joy_batt_msg);

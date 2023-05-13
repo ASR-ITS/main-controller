@@ -1,0 +1,13 @@
+<launch>
+  <!-- AMCL -->
+  <node pkg="amcl" type="amcl" name="amcl">
+    <param name="laser_min_range"           value="0.5"/>
+    <param name="laser_max_range"           value="6.0"/>
+    <param name="laser_max_beams"           value="180"/>
+    <param name="odom_model_type"           value="omni"/>
+    <param name="initial_pose_a"           value="3.14"/>
+    
+    <param name="update_min_d" value="0.01"/>
+    <param name="update_min_a" value="0.02"/>
+  </node>
+</launch>
