@@ -65,32 +65,54 @@ Robot::Robot(): RosRate(100)
         // Go to Autonomous Mode
         if (GuidedMode)
         {
-            // Set LED Feedback PURPLE for Guided Mode
-            MsgJoyLED_R.intensity = 0.13;
-            MsgJoyLED_G.intensity = 0.1;
-            MsgJoyLED_B.intensity = 0.53;
+            // Go to AUTONOMOUS Mode with WHITE Indicator
+            if (vel_msg.StatusControl)
+            {
+                // Set LED Feedback
+                MsgJoyLED_R.intensity = 0.75;
+                MsgJoyLED_G.intensity = 0.77;
+                MsgJoyLED_B.intensity = 0.75;
 
-            // ***TO-DO : ADD PURE PURSUIT MODE*** //
-            // Prevent going to origin if there's no path
-            if(path.x.size() <= 0)
-                target_pose = robot_pose;
+                // Prevent going to origin if there's no path
+                if(path.x.size() <= 0)
+                    target_pose = robot_pose;
+                // Search for Closest Node
+                else
+                    target_pose = PurePursuit(robot_pose, path, 0.5);
+
+                // Pure Pursuit PID
+                output_speed = PointToPointPID(robot_pose, target_pose, 20);
+
+                // Convert to Velocity Command (x-y is switched because odom is switched)
+                RobotSpeed[0] = (int) output_speed.y * -1;
+                RobotSpeed[1] = (int) output_speed.x;
+                RobotSpeed[2] = (int) output_speed.z;
+            }
+
+            // Pause AUTONOMOUS Mode with PURPLE Indicator
             else
-                target_pose = PurePursuit(robot_pose, path, 0.5);
+            {
+                // Set LED Feedback
+                MsgJoyLED_R.intensity = 0.13;
+                MsgJoyLED_G.intensity = 0.1;
+                MsgJoyLED_B.intensity = 0.53;  
 
-            output_speed = PointToPointPID(robot_pose, target_pose, 20);
-
-            RobotSpeed[0] = (int) output_speed.x;
-            RobotSpeed[1] = (int) output_speed.y;
-            RobotSpeed[2] = (int) output_speed.z;
+                // Set Robot Speed to Zero (Safety Issues)
+                for(int i = 0; i<=2; i++)
+                {
+                    RobotSpeed[i] = 0;
+                }    
+            }
         }
 
         // Go to Manual Control Mode
         else
         {
             ClearPath(path);
+            // Go to Manual Control RUN Mode with GREEN Indicator
             if (vel_msg.StatusControl)
             {
-                // Set LED Feedback RED for Joystick Lock Mode
+                // Set LED Feedback
                 MsgJoyLED_R.intensity = 0.12;
                 MsgJoyLED_G.intensity = 0.75;
                 MsgJoyLED_B.intensity = 0.13;
@@ -100,14 +122,16 @@ Robot::Robot(): RosRate(100)
                 RobotSpeed[1] = Controller.Axis[1] * 20;
                 RobotSpeed[2] = Controller.Axis[2] * 15;
             }
+
+            // Go to Manual Control LOCK Mode with RED Indicator
             else
             {
-                // Set LED Feedback GREEN for Joystick Run Mode
+                // Set LED Feedback
                 MsgJoyLED_R.intensity = 1.0;
                 MsgJoyLED_G.intensity = 0.0;
                 MsgJoyLED_B.intensity = 0.13;     
 
-                // Set Robot Speed to Zero (CHECK AGAIN FOR PURE PURSUIT IMPLEMENTATION)
+                // Set Robot Speed to Zero (Safety Issues)
                 for(int i = 0; i<=2; i++)
                 {
                     RobotSpeed[i] = 0;
