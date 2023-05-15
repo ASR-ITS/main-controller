@@ -136,6 +136,12 @@ void Comhardware::SerialReceiveEvent(const ros::TimerEvent &event)
             Odom.pose.pose.position.y = PositionFiltered[0] / -100;
             Odom.pose.pose.position.z = 0.0;
             Odom.pose.pose.orientation = OdomQuat;
+            Odom.pose.covariance = {0.01,  0.0,  0.0,  0.0,  0.0,  0.0,
+                                    0.0,  0.01,  0.0,  0.0,  0.0,  0.0,
+                                    0.0,   0.0, 0.01,  0.0,  0.0,  0.0,
+                                    0.0,   0.0,  0.0, 0.1,  0.0,  0.0,
+                                    0.0,  0.0,  0.0,  0.0,  0.1,  0.0,
+                                    0.0,   0.0,  0.0,  0.0,  0.0,  0.1};
 
             //set the velocity
             Odom.child_frame_id = "base_link";
