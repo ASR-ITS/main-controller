@@ -133,7 +133,7 @@ void Comhardware::SerialReceiveEvent(const ros::TimerEvent &event)
 
             //set the position
             Odom.pose.pose.position.x = PositionFiltered[1] / 100;
-            Odom.pose.pose.position.y = -1 * PositionFiltered[0] / 100;
+            Odom.pose.pose.position.y = PositionFiltered[0] / -100;
             Odom.pose.pose.position.z = 0.0;
             Odom.pose.pose.orientation = OdomQuat;
 

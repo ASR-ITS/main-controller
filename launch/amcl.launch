@@ -4,11 +4,20 @@
     <param name="laser_min_range"           value="0.5"/>
     <param name="laser_max_range"           value="6.0"/>
     <param name="laser_max_beams"           value="180"/>
-    <param name="odom_model_type"           value="omni"/>
+    <param name="odom_model_type"           value="omni-corrected"/>
 
-    <param name="initial_pose_a"           value="0.0"/>
+    <param name="initial_pose_a"           value="3.14"/>
     
-    <param name="update_min_d" value="0.01"/>
-    <param name="update_min_a" value="0.02"/>
+    <param name="update_min_d" value="0.02"/>
+    <param name="update_min_a" value="0.05"/>
+
+    <param name="odom_alpha_1" value="0.005"/>
+    <param name="odom_alpha_2" value="0.005"/>
+    <param name="odom_alpha_3" value="0.010"/>
+    <param name="odom_alpha_4" value="0.005"/>
+    <param name="odom_alpha_5" value="0.003"/>
+
+    <param name="recovery_alpha_slow" value="0.001"/>
+    <param name="recovery_alpha_fast" value="0.001"/>
   </node>
 </launch>

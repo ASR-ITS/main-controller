@@ -66,9 +66,12 @@ Robot::Robot(): RosRate(100)
         if (GuidedMode)
         {
             // Set LED Feedback PURPLE for Guided Mode
+            
             MsgJoyLED_R.intensity = 0.13;
             MsgJoyLED_G.intensity = 0.1;
             MsgJoyLED_B.intensity = 0.53;
+
+            std::cout << "path.x = " << path.x.size() << std::endl;
 
             // ***TO-DO : ADD PURE PURSUIT MODE*** //
             // Prevent going to origin if there's no path
@@ -82,6 +85,7 @@ Robot::Robot(): RosRate(100)
             RobotSpeed[0] = (int) output_speed.x;
             RobotSpeed[1] = (int) output_speed.y;
             RobotSpeed[2] = (int) output_speed.z;
+
         }
 
         // Go to Manual Control Mode
