@@ -74,9 +74,9 @@ Robot::Robot(): RosRate(100)
             if (vel_msg.StatusControl)
             {
                 // Set LED Feedback
-                MsgJoyLED_R.intensity = 0.75;
-                MsgJoyLED_G.intensity = 0.77;
-                MsgJoyLED_B.intensity = 0.75;
+                MsgJoyLED_R.intensity = 0.3;
+                MsgJoyLED_G.intensity = 0.3;
+                MsgJoyLED_B.intensity = 0.0;
 
                 // Prevent going to origin if there's no path
                 if(path.x.size() <= 0)
@@ -86,12 +86,12 @@ Robot::Robot(): RosRate(100)
                     target_pose = PurePursuit(robot_pose, path, 0.5);
 
                 // Pure Pursuit PID
-                pure_pursuit_vel = PointToPointPID(robot_pose, target_pose, 20);
+                pure_pursuit_vel = PointToPointPID(robot_pose, target_pose, 30);
 
                 // Convert to Velocity Command (x-y is switched because odom is switched)
                 RobotSpeed[0] = (int) pure_pursuit_vel.y;
                 RobotSpeed[1] = (int) pure_pursuit_vel.x * -1;
-                RobotSpeed[2] = (int) pure_pursuit_vel.z;
+                RobotSpeed[2] = 0; // Remove Yaw Control for TESTING Purposes;
 
                 pure_pursuit_msg.linear.x  = RobotSpeed[0];
                 pure_pursuit_msg.linear.y  = RobotSpeed[1];
@@ -101,9 +101,9 @@ Robot::Robot(): RosRate(100)
                 if(obstacle_status)
                 {
                     // Set LED Feedback
-                    MsgJoyLED_R.intensity = 0.3;
-                    MsgJoyLED_G.intensity = 0.3;
-                    MsgJoyLED_B.intensity = 0.0;
+                    MsgJoyLED_R.intensity = 1.0;
+                    MsgJoyLED_G.intensity = 1.0;
+                    MsgJoyLED_B.intensity = 1.0;
 
                     RobotSpeed[0] = obstacle_avoider_vel.x;
                     RobotSpeed[1] = obstacle_avoider_vel.y;
@@ -111,7 +111,7 @@ Robot::Robot(): RosRate(100)
                 }
             }
 
-            // Pause AUTONOMOUS Mode with RED Indicator
+            // Pause AUTONOMOUS Mode with PURPLE Indicator
             else
             {
                 // Set LED Feedback
@@ -336,18 +336,18 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robotPose, Pose_t targetPose, float 
         output[i] = proportional[i] + integral[i] + derivative[i];
     }
 
-    // Speed Limiter and Normalizer
-    if(abs(output[0]) >= maxSpeed || abs(output[1]) >= maxSpeed || abs(output[2]) >= maxSpeed){
-        float max = 0;
-        for(int i=0 ; i<=2 ; i++){
-            if(abs(output[i]) > max){
-                max = abs(output[i]);
-            }
-        }
-        for(int i=0 ; i<=2 ; i++){
-            output[i] = output[i] * (maxSpeed / max);
-        }
-    }
+    // // Speed Limiter and Normalizer
+    // if(abs(output[0]) >= maxSpeed || abs(output[1]) >= maxSpeed || abs(output[2]) >= maxSpeed){
+    //     float max = 0;
+    //     for(int i=0 ; i<=2 ; i++){
+    //         if(abs(output[i]) > max){
+    //             max = abs(output[i]);
+    //         }
+    //     }
+    //     for(int i=0 ; i<=2 ; i++){
+    //         output[i] = output[i] * (maxSpeed / max);
+    //     }
+    // }
 
     // Speed Limiter Only
     for(int i=0 ; i<=2 ; i++){

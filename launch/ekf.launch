@@ -3,4 +3,8 @@
   <node pkg="robot_localization" type="ekf_localization_node" name="ekf_se" clear_params="true">
     <rosparam command="load" file="$(find main_controller)/config/ekf.yaml" />
   </node>
+  <!-- <node pkg="robot_localization" type="ekf_localization_node" name="ekf_odom_amcl" clear_params="true">
+    <rosparam command="load" file="$(find main_controller)/config/ekf_odom_amcl.yaml" />
+    <remap from="/odom/filtered" to="/odom_amcl/filtered"/>
+  </node> -->
 </launch>
