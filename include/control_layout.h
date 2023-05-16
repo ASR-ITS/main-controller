@@ -2,9 +2,11 @@
 #include <ros/ros.h>
 #include <ros/package.h>
 
+#include "std_msgs/Bool.h"
 #include "std_msgs/Int32MultiArray.h"
 #include "std_msgs/Float32MultiArray.h"
 
+#include "geometry_msgs/Twist.h"
 #include "geometry_msgs/Pose2D.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
@@ -38,10 +40,11 @@ public:
     ~Robot();
 
 private:
-    int     RobotSpeed[3] = {0, 0, 0};
-    uint8_t StatusControl = 0;
-    uint8_t GuidedMode    = 0;
-    float   JoyBatt       = 0.0;
+    int     RobotSpeed[3]      = {0, 0, 0};
+    uint8_t StatusControl      = 0;
+    uint8_t GuidedMode         = 0;
+    bool    obstacle_status;
+    float   JoyBatt            = 0.0;
     
     struct DS4_t 
     {
@@ -64,10 +67,10 @@ private:
 
     typedef enum
     {
-        square    = 0,
-        triangle  = 1,
-        circle    = 2,
-        cross     = 3,
+        SQUARE    = 0,
+        TRIANGLE  = 1,
+        CIRCLE    = 2,
+        CROSS     = 3,
         L1        = 4,
         L2        = 5,
         R1        = 6,
@@ -83,21 +86,26 @@ private:
     DS4_t Controller;
     Path_t path;
     Pose_t robot_pose;
+    Pose_t obstacle_avoider_vel;
 
     ros::NodeHandle     Nh;
     ros::Subscriber     Sub_Joy;
     ros::Subscriber     Sub_Joy_Battery;
     ros::Subscriber     Sub_Path;
     ros::Subscriber     Sub_Pose;
-
+    ros::Subscriber     Sub_Obstacle;
+    ros::Subscriber     Sub_Obs_Vel;
+    
     ros::Publisher      Pub_Vel;
     ros::Publisher      Pub_Joy_Feedback;
+    ros::Publisher      Pub_Pure_Pursuit;
     ros::Rate           RosRate;
 
     sensor_msgs::JoyFeedback        MsgJoyLED_R;
     sensor_msgs::JoyFeedback        MsgJoyLED_G;
     sensor_msgs::JoyFeedback        MsgJoyLED_B;
     sensor_msgs::JoyFeedbackArray   MsgJoyFeedbackArray;
+    geometry_msgs::Twist            pure_pursuit_msg; 
 
     main_controller::ControllerData         vel_msg;
 
@@ -112,4 +120,7 @@ private:
     void Joy_Battery_Callback     (const sensor_msgs::BatteryState::ConstPtr &joy_batt_msg);
     void Path_Callback            (const nav_msgs::Path::ConstPtr &path_msg);
     void Pose_Callback            (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);
+    void Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status_msg);
+    void Obstacle_Vel_Callback    (const geometry_msgs::Twist::ConstPtr &obs_vel_msg);
+
 };

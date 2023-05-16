@@ -13,11 +13,16 @@ Robot::Robot(): RosRate(100)
     Sub_Path           = Nh.subscribe("/path", 10, &Robot::Path_Callback, this);
     Sub_Pose           = Nh.subscribe("/amcl_pose", 10, &Robot::Pose_Callback, this);
 
+    Sub_Obstacle       = Nh.subscribe("/obstacle_detected", 10, &Robot::Obstacle_Status_Callback, this);
+    Sub_Obs_Vel        = Nh.subscribe("/obs_vel", 10, &Robot::Obstacle_Vel_Callback, this);
+
     Pub_Vel            = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
     Pub_Joy_Feedback   = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
+    Pub_Pure_Pursuit   = Nh.advertise<geometry_msgs::Twist>("/pure_pursuit_vel", 10);
 
     // Initialize Speed Variable
-    for (int i = 0; i <=2 ; i++){
+    for (int i = 0; i <=2 ; i++)
+    {
         vel_msg.data.push_back(0);
     }
 
@@ -40,20 +45,20 @@ Robot::Robot(): RosRate(100)
 
     // Initialize Pure Purusit
     Pose_t target_pose;
-    Pose_t output_speed;
+    Pose_t pure_pursuit_vel;
 
     while(ros::ok()){
         
         // Set Status Control using TRIANGLE Button
-        if (Controller.Buttons[triangle] == 0 && Controller.prev_button[triangle] == 1)
+        if (Controller.Buttons[TRIANGLE] == 0 && Controller.prev_button[TRIANGLE] == 1)
         {
             StatusControl ^= 1;
             vel_msg.StatusControl = StatusControl;
         }
-        Controller.prev_button[triangle] = Controller.Buttons[triangle];
+        Controller.prev_button[TRIANGLE] = Controller.Buttons[TRIANGLE];
 
         // Print Robot Speed to Screen
-        std::cout << "Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
+        std::cout << "x : " << RobotSpeed[0] << " y : " << RobotSpeed[1] << " z : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
 
         // Set Mode Using OPTIONS Button
         if (Controller.Buttons[OPTIONS] == 0 && Controller.prev_button[OPTIONS] == 1)
@@ -81,21 +86,38 @@ Robot::Robot(): RosRate(100)
                     target_pose = PurePursuit(robot_pose, path, 0.5);
 
                 // Pure Pursuit PID
-                output_speed = PointToPointPID(robot_pose, target_pose, 20);
+                pure_pursuit_vel = PointToPointPID(robot_pose, target_pose, 20);
 
                 // Convert to Velocity Command (x-y is switched because odom is switched)
-                RobotSpeed[0] = (int) output_speed.y * -1;
-                RobotSpeed[1] = (int) output_speed.x;
-                RobotSpeed[2] = (int) output_speed.z;
+                RobotSpeed[0] = (int) pure_pursuit_vel.y;
+                RobotSpeed[1] = (int) pure_pursuit_vel.x * -1;
+                RobotSpeed[2] = (int) pure_pursuit_vel.z;
+
+                pure_pursuit_msg.linear.x  = RobotSpeed[0];
+                pure_pursuit_msg.linear.y  = RobotSpeed[1];
+                pure_pursuit_msg.angular.z = RobotSpeed[2];
+
+                // Obstacle Avoidance Control with YELLOW Indicator
+                if(obstacle_status)
+                {
+                    // Set LED Feedback
+                    MsgJoyLED_R.intensity = 0.3;
+                    MsgJoyLED_G.intensity = 0.3;
+                    MsgJoyLED_B.intensity = 0.0;
+
+                    RobotSpeed[0] = obstacle_avoider_vel.x;
+                    RobotSpeed[1] = obstacle_avoider_vel.y;
+                    RobotSpeed[2] = obstacle_avoider_vel.z;
+                }
             }
 
-            // Pause AUTONOMOUS Mode with PURPLE Indicator
+            // Pause AUTONOMOUS Mode with RED Indicator
             else
             {
                 // Set LED Feedback
-                MsgJoyLED_R.intensity = 0.13;
-                MsgJoyLED_G.intensity = 0.1;
-                MsgJoyLED_B.intensity = 0.53;  
+                MsgJoyLED_R.intensity = 1.0;
+                MsgJoyLED_G.intensity = 0.0;
+                MsgJoyLED_B.intensity = 0.13;  
 
                 // Set Robot Speed to Zero (Safety Issues)
                 for(int i = 0; i<=2; i++)
@@ -103,6 +125,7 @@ Robot::Robot(): RosRate(100)
                     RobotSpeed[i] = 0;
                 }    
             }
+
         }
 
         // Go to Manual Control Mode
@@ -151,6 +174,7 @@ Robot::Robot(): RosRate(100)
 
         // Publish Topics
         Pub_Vel.publish(vel_msg);
+        Pub_Pure_Pursuit.publish(pure_pursuit_msg);
         Pub_Joy_Feedback.publish(MsgJoyFeedbackArray);
 
         ros::spinOnce(); 
@@ -193,6 +217,18 @@ void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::Const
     robot_pose.x = pose_msg->pose.pose.position.x;
     robot_pose.y = pose_msg->pose.pose.position.y;
     robot_pose.z = pose_msg->pose.pose.position.z;    
+}
+
+void Robot::Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status_msg)
+{
+    obstacle_status = obs_status_msg->data;
+}
+
+void Robot::Obstacle_Vel_Callback    (const geometry_msgs::Twist::ConstPtr &obs_vel_msg)
+{
+    obstacle_avoider_vel.x = obs_vel_msg->linear.x;
+    obstacle_avoider_vel.y = obs_vel_msg->linear.y;
+    obstacle_avoider_vel.z = obs_vel_msg->angular.z;
 }
 
 void Robot::ClearPath(Path_t &path){
@@ -314,3 +350,4 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robotPose, Pose_t targetPose, float 
 
     return speedRobot;
 }
+

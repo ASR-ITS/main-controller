@@ -18,16 +18,16 @@
         args="0 0.05 -0.01 -1.5707 0 1.5707 ds4 ds4_imu" />
 
     <!-- Run Controller Node -->
-    <node pkg="main_controller" type="robot_node" name="robot_node" />
+    <node pkg="main_controller" type="robot_node" name="robot_node" output="screen"/>
 
     <!-- Run the map server -->
     <arg name="map_file" default="$(find path_planner)/maps/rtabmap.yaml"/>
     <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
 
     <!-- Run the costmap node -->
-    <node name="costmap_node" pkg="costmap_2d" type="costmap_2d_node" >
+    <!-- <node name="costmap_node" pkg="costmap_2d" type="costmap_2d_node" >
         <rosparam file="$(find main_controller)/config/global_costmap_params.yaml" command="load" ns="costmap" />
-    </node>
+    </node> -->
     
     <!-- Run STM32 Communication Node -->
     <node pkg="main_controller" type="tf_broadcaster_node" name="odom_to_base_broadcaster_node" />
