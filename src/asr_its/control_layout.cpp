@@ -41,6 +41,10 @@ Robot::Robot(): RosRate(100)
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_G);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_B);
 
+    GuidedMode = 1;
+    Controller.Buttons[circle] = 0;
+    Controller.prev_button[circle] = 1;
+
     while(ros::ok()){
         
         // Set Status Control using TRIANGLE Button
@@ -411,6 +415,7 @@ void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::Const
 {
     Robot_Pose.x = pose_msg->pose.pose.position.x;
     Robot_Pose.y = pose_msg->pose.pose.position.y;
+    Robot_Pose.z = pose_msg->pose.pose.position.z;
 
     tf::Quaternion q(
         pose_msg->pose.pose.orientation.x,
@@ -424,5 +429,5 @@ void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::Const
     
     m.getRPY(roll, pitch, yaw);
     
-    Robot_Pose.z = yaw;    
+    // Robot_Pose.z = yaw;    
 }
