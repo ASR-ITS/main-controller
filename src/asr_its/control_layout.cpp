@@ -216,7 +216,22 @@ void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::Const
 {
     robot_pose.x = pose_msg->pose.pose.position.x;
     robot_pose.y = pose_msg->pose.pose.position.y;
-    robot_pose.z = pose_msg->pose.pose.position.z;    
+    robot_pose.z = pose_msg->pose.pose.position.z;
+
+    tf::Quaternion q(
+        pose_msg->pose.pose.orientation.x,
+        pose_msg->pose.pose.orientation.y,
+        pose_msg->pose.pose.orientation.z,
+        pose_msg->pose.pose.orientation.w);
+
+    tf::Matrix3x3 m(q);
+
+    double roll, pitch, yaw;
+
+    m.getRPY(roll, pitch, yaw);
+    
+    robot_pose.z = yaw;
+
 }
 
 void Robot::Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status_msg)
