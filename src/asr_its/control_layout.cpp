@@ -98,9 +98,9 @@ Robot::Robot(): RosRate(100)
             RobotSpeed[1] = (int) speedRobot.y;
             RobotSpeed[2] = (int) speedRobot.z;
 
-            std::cout << "Robot_Pose.x = " << Robot_Pose.x << "Robot_Pose.y = " << Robot_Pose.y << " Robot_Pose.z = " << Robot_Pose.z * (180/MATH_PI) << std::endl;
-            std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z * (180/MATH_PI) << std::endl;
-            std::cout << "PURE PURSUIT Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
+            // std::cout << "Robot_Pose.x = " << Robot_Pose.x << "Robot_Pose.y = " << Robot_Pose.y << " Robot_Pose.z = " << Robot_Pose.z * (180/MATH_PI) << std::endl;
+            // std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z * (180/MATH_PI) << std::endl;
+            // std::cout << "PURE PURSUIT Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
 
             // Set Robot Speed to Zero (CHECK AGAIN FOR PURE PURSUIT IMPLEMENTATION)
             // for(int i = 0; i<=2; i++)
@@ -252,18 +252,22 @@ void Robot::ReadPathRelative(std::string fileName, Path_t &path, Pose_t robotPos
             getline(ss, token, ',');
             temp_point = stof(token);
             path.x.push(temp_point + robotPose.x);
+            std::cout << "path.x = " << temp_point + robotPose.x ;
 
             // std::cout << "size.y = " << path.y.size() << std::endl;
 
             getline(ss, token, ',');
             temp_point = stof(token);
             path.y.push(temp_point + robotPose.y);
+            std::cout << " path.y = " << temp_point + robotPose.y ;
 
             // std::cout << "pose.y = " << robotPose.y << " input.y = " << temp_point << " path.y.front() = " << path.y.front() << std::endl; 
 
             getline(ss, token, ',');
             temp_point = stof(token);
             path.z.push(temp_point + robotPose.z);
+            std::cout << " path.z = " << temp_point + robotPose.z << std::endl;
+
        }
     }
 }
@@ -293,10 +297,14 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robotPose, Path_t &path, float offset)
     distance = sqrt(pow((targetPose.x - robotPose.x), 2) + pow((targetPose.y - robotPose.y), 2));
     
     if(pathLeft > 1){    
-        while(distance < offset && pathLeft > 1){
+        while(distance < offset /*|| path.x.size() > 1*/){
+            std::cout << "path left = " << path.x.size() << " distance = " << distance << std::endl;
             path.x.pop(); targetPose.x = path.x.front();
             path.y.pop(); targetPose.y = path.y.front();  
             path.z.pop(); targetPose.z = path.z.front();
+            if(path.x.size() <= 1)
+                break;
+            // std::cout << "2-path left = " << path.x.size() << " distance = " << distance << std::endl;
             distance = sqrt(pow((targetPose.x - robotPose.x), 2) + pow((targetPose.y - robotPose.y), 2));
         }
     }
@@ -307,9 +315,9 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robotPose, Path_t &path, float offset)
     }
 
     // Debug
-    std::cout << "path left = " << pathLeft << std::endl;
-    // std::cout << "robotPose.x = " << robotPose.x << " robotPose.y = " << robotPose.y << " robotPose.theta = " << robotPose.z << std::endl;
-    // std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z << std::endl;
+    std::cout << "path left = " << path.x.size() << std::endl;
+    std::cout << "robotPose.x = " << robotPose.x << " robotPose.y = " << robotPose.y << " robotPose.theta = " << robotPose.z << std::endl;
+    std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z << std::endl;
     std::cout << "distance = " << distance << std::endl;
 
     return targetPose;
