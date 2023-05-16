@@ -98,8 +98,8 @@ Robot::Robot(): RosRate(100)
             RobotSpeed[1] = (int) speedRobot.y;
             RobotSpeed[2] = (int) speedRobot.z;
 
-            std::cout << "Robot_Pose.x = " << Robot_Pose.x << "Robot_Pose.y = " << Robot_Pose.y << " Robot_Pose.z = " << Robot_Pose.z << std::endl;
-            std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z << std::endl;
+            std::cout << "Robot_Pose.x = " << Robot_Pose.x << "Robot_Pose.y = " << Robot_Pose.y << " Robot_Pose.z = " << Robot_Pose.z * (180/MATH_PI) << std::endl;
+            std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z * (180/MATH_PI) << std::endl;
             std::cout << "PURE PURSUIT Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
 
             // Set Robot Speed to Zero (CHECK AGAIN FOR PURE PURSUIT IMPLEMENTATION)
@@ -242,7 +242,7 @@ void Robot::ReadPathRelative(std::string fileName, Path_t &path, Pose_t robotPos
             // Add temp variable
             float temp_point;
 
-            std::cout <<" path.y.front() = " << path.y.front() << std::endl;
+            // std::cout <<" path.y.front() = " << path.y.front() << std::endl;
 
             // Create a stringstream to read the linex
             std::stringstream ss(line);
@@ -253,13 +253,13 @@ void Robot::ReadPathRelative(std::string fileName, Path_t &path, Pose_t robotPos
             temp_point = stof(token);
             path.x.push(temp_point + robotPose.x);
 
-            std::cout << "size.y = " << path.y.size() << std::endl;
+            // std::cout << "size.y = " << path.y.size() << std::endl;
 
             getline(ss, token, ',');
             temp_point = stof(token);
             path.y.push(temp_point + robotPose.y);
 
-            std::cout << "pose.y = " << robotPose.y << " input.y = " << temp_point << " path.y.front() = " << path.y.front() << std::endl; 
+            // std::cout << "pose.y = " << robotPose.y << " input.y = " << temp_point << " path.y.front() = " << path.y.front() << std::endl; 
 
             getline(ss, token, ',');
             temp_point = stof(token);
@@ -310,7 +310,7 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robotPose, Path_t &path, float offset)
     std::cout << "path left = " << pathLeft << std::endl;
     // std::cout << "robotPose.x = " << robotPose.x << " robotPose.y = " << robotPose.y << " robotPose.theta = " << robotPose.z << std::endl;
     // std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z << std::endl;
-    // std::cout << "distance = " << distance << std::endl;
+    std::cout << "distance = " << distance << std::endl;
 
     return targetPose;
 }
@@ -403,5 +403,18 @@ void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::Const
 {
     Robot_Pose.x = pose_msg->pose.pose.position.x;
     Robot_Pose.y = pose_msg->pose.pose.position.y;
-    Robot_Pose.z = pose_msg->pose.pose.position.z;    
+
+    tf::Quaternion q(
+        pose_msg->pose.pose.orientation.x,
+        pose_msg->pose.pose.orientation.y,
+        pose_msg->pose.pose.orientation.z,
+        pose_msg->pose.pose.orientation.w);
+
+    tf::Matrix3x3 m(q);
+
+    double roll, pitch, yaw;
+    
+    m.getRPY(roll, pitch, yaw);
+    
+    Robot_Pose.z = yaw;    
 }

@@ -17,6 +17,8 @@
         "string_view": "cpp",
         "limits": "cpp",
         "ostream": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp"
     }
 }
