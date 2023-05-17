@@ -41,7 +41,10 @@ Robot::Robot(): RosRate(100)
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_G);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_B);
 
+    // Time
+
     while(ros::ok()){
+        
         
         // Set Status Control using TRIANGLE Button
         if (Controller.Buttons[triangle] == 0 && Controller.prev_button[triangle] == 1)
@@ -98,7 +101,7 @@ Robot::Robot(): RosRate(100)
             RobotSpeed[1] = (int) speedRobot.y;
             RobotSpeed[2] = (int) speedRobot.z;
 
-            // std::cout << "Robot_Pose.x = " << Robot_Pose.x << "Robot_Pose.y = " << Robot_Pose.y << " Robot_Pose.z = " << Robot_Pose.z * (180/MATH_PI) << std::endl;
+            // std::cout << "LUAR - Robot_Pose.x = " << Robot_Pose.x << "Robot_Pose.y = " << Robot_Pose.y << " Robot_Pose.z = " << Robot_Pose.z * (180/MATH_PI) << std::endl;
             // std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z * (180/MATH_PI) << std::endl;
             // std::cout << "PURE PURSUIT Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
 
