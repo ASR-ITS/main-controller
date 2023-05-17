@@ -79,7 +79,7 @@ Robot::Robot(): RosRate(100)
                 ClearPath(Robot_Path);
                 std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
                 // ReadPath(filePath, Robot_Path);
-                ReadPathRelative(filePath, Robot_Path, Robot_Pose);
+                ReadPathRelative(filePath, Robot_Path, Robot_Pose_2);
                 int pathSize = Robot_Path.x.size();
                 std::cout << "Read waypoints completed" << ", size of path = " << pathSize << std::endl;
             }
@@ -91,11 +91,11 @@ Robot::Robot(): RosRate(100)
 
             // Prevent going to origin if there's no path
             if(Robot_Path.x.size() <= 0)
-                targetPose = Robot_Pose;
+                targetPose = Robot_Pose_2;
             else
-                targetPose = PurePursuit(Robot_Pose, Robot_Path, 0.5);
+                targetPose = PurePursuit(Robot_Pose_2, Robot_Path, 0.5);
 
-            speedRobot = PointToPointPID(Robot_Pose, targetPose, 20);
+            speedRobot = PointToPointPID(Robot_Pose_2, targetPose, 20);
 
             RobotSpeed[0] = (int) speedRobot.x;
             RobotSpeed[1] = (int) speedRobot.y;

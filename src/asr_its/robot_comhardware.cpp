@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include "robot_comhardware.h"
 
-Comhardware::Comhardware(): RosRate(100) //20
+Comhardware::Comhardware(): RosRate(10) //20
 {
     if (RS232_OpenComport(Cport_nr, 115200, Mode))
     {
