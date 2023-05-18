@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="rtabmap_odom" type="icp_odometry" name="icp_odometry" output="screen">
+        <param name="frame_id" value="base_link"/>
+        <param name="odom_frame_id" value="odom"/>
+        <remap from="/odom" to="/odom_icp"/>
+        <param name="wait_for_transform" value="true"/>
+    </node>
+</launch>
