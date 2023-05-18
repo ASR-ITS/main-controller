@@ -16,7 +16,7 @@ Comhardware::Comhardware(): RosRate(100) //20
         // VelPub  = Nh.advertise<geometry_msgs::Twist>("cmd_vel, 50");
         SpeedSub = Nh.subscribe("robot/cmd_vel", 10, &Comhardware::SpeedSubCallback, this);
 
-        ThreadSerialTransmit = Nh.createTimer(ros::Duration(0.01), &Comhardware::SerialTransmitEvent, this);
+        ThreadSerialTransmit = Nh.createTimer(ros::Duration(0.02), &Comhardware::SerialTransmitEvent, this);
         ThreadSerialReceived = Nh.createTimer(ros::Duration(0.01), &Comhardware::SerialReceiveEvent, this);
         Mts.spin();
     }

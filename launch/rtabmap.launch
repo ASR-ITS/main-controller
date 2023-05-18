@@ -1,6 +1,6 @@
 <launch>
     <!-- Run the DS4 Driver -->
-    <arg name="addr" default="84:30:95:90:12:CD" />
+    <!-- <arg name="addr" default="84:30:95:90:12:CD" />
     <arg name="use_standard_msgs" default="true" />
     <arg name="autorepeat_rate" default="0" if="$(arg use_standard_msgs)" />
 
@@ -13,18 +13,18 @@
     </node>
 
     <node pkg="tf2_ros" type="static_transform_publisher" name="ds4_to_imu"
-        args="0 0.05 -0.01 -1.5707 0 1.5707 ds4 ds4_imu" />
+        args="0 0.05 -0.01 -1.5707 0 1.5707 ds4 ds4_imu" /> -->
 
     <!-- Run Controller Node -->
-    <node pkg="main_controller" type="robot_node" name="robot_node" />
+    <!-- <node pkg="main_controller" type="robot_node" name="robot_node" /> -->
     
     <!-- Run Lidar Node -->
-    <include file="$(find rplidar_ros)/launch/rplidar.launch" />
-    <node pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster_node" args="0.12 0 0 3.4 0 0 base_link laser 100"/>
+    <!-- <include file="$(find rplidar_ros)/launch/rplidar.launch" /> -->
+    <!-- <node pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster_node" args="0.12 0 0 3.4 0 0 base_link laser 100"/> -->
 
     <!-- Run STM32 Communication Node -->
     <!-- <node pkg="main_controller" type="tf_broadcaster_node" name="odom_to_base_broadcaster_node" /-->
-    <node pkg="main_controller" type="robot_comhardware_node" name="comhardware_node" />
+    <!-- <node pkg="main_controller" type="robot_comhardware_node" name="comhardware_node" /> -->
 
     <group ns="rtabmap">
 
@@ -81,4 +81,6 @@
         </node>
 
     </group>
+    <node pkg="rviz" type="rviz" name="rviz"/>
+
 </launch>
