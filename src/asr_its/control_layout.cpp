@@ -27,28 +27,33 @@ Robot::Robot(): RosRate(100)
     }
 
     // Initialize Joystick LED Feedback
-    MsgJoyLED_R.type      = 0;
-    MsgJoyLED_R.id        = 0;
-    MsgJoyLED_R.intensity = 0.0;
+    MsgJoyLED_R.type        = 0;
+    MsgJoyLED_R.id          = 0;
+    MsgJoyLED_R.intensity   = 0.0;
 
-    MsgJoyLED_G.type      = 0;
-    MsgJoyLED_G.id        = 1;
-    MsgJoyLED_R.intensity = 0.0;
+    MsgJoyLED_G.type        = 0;
+    MsgJoyLED_G.id          = 1;
+    MsgJoyLED_R.intensity   = 0.0;
 
-    MsgJoyLED_B.type      = 0;
-    MsgJoyLED_B.id        = 2;
-    MsgJoyLED_B.intensity = 0.0;
+    MsgJoyLED_B.type        = 0;
+    MsgJoyLED_B.id          = 2;
+    MsgJoyLED_B.intensity   = 0.0;
+
+    MsgJoyRumble.type       = 1;
+    MsgJoyRumble.id         = 1;
+    MsgJoyRumble.intensity  = 0.5;    
 
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_R);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_G);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_B);
+    MsgJoyFeedbackArray.array.push_back(MsgJoyRumble);
 
     // Initialize Pure Purusit
     Pose_t target_pose;
     Pose_t pure_pursuit_vel;
 
-    while(ros::ok()){
-        
+    while(ros::ok())
+    {    
         // Set Status Control using TRIANGLE Button
         if (Controller.Buttons[TRIANGLE] == 0 && Controller.prev_button[TRIANGLE] == 1)
         {
@@ -58,12 +63,16 @@ Robot::Robot(): RosRate(100)
         Controller.prev_button[TRIANGLE] = Controller.Buttons[TRIANGLE];
 
         // Print Robot Speed to Screen
-        std::cout << "x : " << RobotSpeed[0] << " y : " << RobotSpeed[1] << " z : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
+        std::cout << "x : " << RobotSpeed[0] << " y : " << RobotSpeed[1] << " Theta : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
 
         // Set Mode Using OPTIONS Button
         if (Controller.Buttons[OPTIONS] == 0 && Controller.prev_button[OPTIONS] == 1)
         {
             GuidedMode ^= 1;
+            // Set Rumble Feedback
+            MsgJoyRumble.type       = 1;
+            MsgJoyRumble.id         = 1;
+            MsgJoyRumble.intensity  = 0.5;
         }
         Controller.prev_button[OPTIONS] = Controller.Buttons[OPTIONS];
 
@@ -86,7 +95,7 @@ Robot::Robot(): RosRate(100)
                     target_pose = PurePursuit(robot_pose, path, 0.5);
 
                 // Pure Pursuit PID
-                pure_pursuit_vel = PointToPointPID(robot_pose, target_pose, 30);
+                pure_pursuit_vel = PointToPointPID(robot_pose, target_pose, 20);
 
                 // Convert to Velocity Command (x-y is switched because odom is switched)
                 RobotSpeed[0] = (int) pure_pursuit_vel.y;
@@ -171,6 +180,7 @@ Robot::Robot(): RosRate(100)
         MsgJoyFeedbackArray.array.at(0) = MsgJoyLED_R;
         MsgJoyFeedbackArray.array.at(1) = MsgJoyLED_G;
         MsgJoyFeedbackArray.array.at(2) = MsgJoyLED_B;
+        MsgJoyFeedbackArray.array.at(3) = MsgJoyRumble;
 
         // Publish Topics
         Pub_Vel.publish(vel_msg);
@@ -246,13 +256,15 @@ void Robot::Obstacle_Vel_Callback    (const geometry_msgs::Twist::ConstPtr &obs_
     obstacle_avoider_vel.z = obs_vel_msg->angular.z;
 }
 
-void Robot::ClearPath(Path_t &path){
-    while(!path.x.empty()){
+void Robot::ClearPath(Path_t &path)
+{
+    while(!path.x.empty())
+    {
         path.x.pop();
         path.y.pop();
         path.z.pop();
-        }
     }
+}
 
 Robot::Pose_t Robot::PurePursuit(Pose_t robotPose, Path_t &path, float offset)
 {
@@ -285,9 +297,6 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robotPose, Path_t &path, float offset)
 
     // Debug
     std::cout << "path left = " << pathLeft << std::endl;
-    // std::cout << "robotPose.x = " << robotPose.x << " robotPose.y = " << robotPose.y << " robotPose.theta = " << robotPose.z << std::endl;
-    // std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z << std::endl;
-    // std::cout << "distance = " << distance << std::endl;
 
     return targetPose;
 }
