@@ -5,7 +5,7 @@
     <include file="$(find main_controller)/launch/controller.launch"/>
 
     <!-- Run the map server -->
-    <arg name="map_file" default="$(find path_planner)/maps/map_amcl.yaml"/>
+    <arg name="map_file" default="$(find path_planner)/maps/rtabmap.yaml"/>
     <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
 
     <!-- Run the costmap node -->
@@ -14,8 +14,8 @@
     </node> -->
 
     <!-- Run Odom node -->
-    <!-- <node pkg="main_controller" type="tf_broadcaster_node" name="odom_to_base_broadcaster_node" /> -->
-    <include file="$(find main_controller)/launch/icp_odom.launch" />
+    <node pkg="main_controller" type="tf_broadcaster_node" name="odom_to_base_broadcaster_node" />
+    <!-- <include file="$(find main_controller)/launch/icp_odom.launch" /> -->
     <!-- <include file="$(find main_controller)/launch/ekf.launch" /> -->
     
     <!-- Run Lidar Node -->
@@ -27,6 +27,6 @@
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find main_controller)/config/rviz.config.rviz"/>
 
     <!-- Run Path Planning -->
-    <!-- <node name="astar_node" pkg="path_planner" type="path_planner.py" output="screen"/> -->
+    <node name="astar_node" pkg="path_planner" type="path_planner.py" output="screen"/>
     
 </launch>

@@ -41,7 +41,7 @@ Robot::Robot(): RosRate(100)
 
     MsgJoyRumble.type       = 1;
     MsgJoyRumble.id         = 1;
-    MsgJoyRumble.intensity  = 0.5;    
+    MsgJoyRumble.intensity  = 0.0;    
 
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_R);
     MsgJoyFeedbackArray.array.push_back(MsgJoyLED_G);
@@ -76,6 +76,7 @@ Robot::Robot(): RosRate(100)
         }
         Controller.prev_button[OPTIONS] = Controller.Buttons[OPTIONS];
 
+        MsgJoyRumble.intensity  = 0.0;
         // Go to Autonomous Mode
         if (GuidedMode)
         {
