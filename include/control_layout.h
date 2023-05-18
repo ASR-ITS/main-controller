@@ -104,6 +104,7 @@ private:
     sensor_msgs::JoyFeedback        MsgJoyLED_R;
     sensor_msgs::JoyFeedback        MsgJoyLED_G;
     sensor_msgs::JoyFeedback        MsgJoyLED_B;
+    sensor_msgs::JoyFeedback        MsgJoyRumble;
     sensor_msgs::JoyFeedbackArray   MsgJoyFeedbackArray;
     geometry_msgs::Twist            pure_pursuit_msg; 
 
