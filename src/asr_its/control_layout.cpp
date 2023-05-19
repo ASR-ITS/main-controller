@@ -55,7 +55,9 @@ Robot::Robot(): RosRate(100)
         Controller.prev_button[triangle] = Controller.Buttons[triangle];
 
         // Print Robot Speed to Screen
-        std::cout << "Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
+        std::cout << "Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;            // std::cout << "LUAR - Robot_Pose.x = " << Robot_Pose.x << "Robot_Pose.y = " << Robot_Pose.y << " Robot_Pose.z = " << Robot_Pose.z * (180/MATH_PI) << std::endl;
+        std::cout << "Robot_Pose.x = " << Robot_Pose.x << "Robot_Pose.y = " << Robot_Pose.y << " Robot_Pose.z = " << Robot_Pose.z * (180/MATH_PI) << std::endl;
+
 
         // Set Mode Using OPTIONS Button
         if (Controller.Buttons[OPTIONS] == 0 && Controller.prev_button[OPTIONS] == 1)
@@ -79,7 +81,7 @@ Robot::Robot(): RosRate(100)
                 ClearPath(Robot_Path);
                 std::string filePath = ros::package::getPath("main_controller") + "/data/path_1.csv";
                 // ReadPath(filePath, Robot_Path);
-                ReadPathRelative(filePath, Robot_Path, Robot_Pose_2);
+                ReadPathRelative(filePath, Robot_Path, Robot_Pose);
                 int pathSize = Robot_Path.x.size();
                 std::cout << "Read waypoints completed" << ", size of path = " << pathSize << std::endl;
             }
@@ -91,17 +93,18 @@ Robot::Robot(): RosRate(100)
 
             // Prevent going to origin if there's no path
             if(Robot_Path.x.size() <= 0)
-                targetPose = Robot_Pose_2;
+                targetPose = Robot_Pose;
             else
-                targetPose = PurePursuit(Robot_Pose_2, Robot_Path, 0.5);
+                targetPose = PurePursuit(Robot_Pose, Robot_Path, 0.5);
 
-            speedRobot = PointToPointPID(Robot_Pose_2, targetPose, 20);
+            speedRobot = PointToPointPID(Robot_Pose, targetPose, 25);
 
             RobotSpeed[0] = (int) speedRobot.x;
             RobotSpeed[1] = (int) speedRobot.y;
             RobotSpeed[2] = (int) speedRobot.z;
 
-            // std::cout << "LUAR - Robot_Pose.x = " << Robot_Pose.x << "Robot_Pose.y = " << Robot_Pose.y << " Robot_Pose.z = " << Robot_Pose.z * (180/MATH_PI) << std::endl;
+            GlobalToLocalSpeed(Robot_Pose);
+
             // std::cout << "targetPose.x = " << targetPose.x << " targetPose.y = " << targetPose.y << " targetPose.theta = " << targetPose.z * (180/MATH_PI) << std::endl;
             // std::cout << "PURE PURSUIT Speed[0] : " << RobotSpeed[0] << " Speed[1] : " << RobotSpeed[1] << " Speed[2] : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
 
@@ -243,7 +246,9 @@ void Robot::ReadPathRelative(std::string fileName, Path_t &path, Pose_t robotPos
 
         while(getline(file, line)){
             // Add temp variable
-            float temp_point;
+            float temp_point_x;
+            float temp_point_y;
+            float temp_point_z;
 
             // std::cout <<" path.y.front() = " << path.y.front() << std::endl;
 
@@ -253,23 +258,22 @@ void Robot::ReadPathRelative(std::string fileName, Path_t &path, Pose_t robotPos
 
             // Read each comma-separated value from the line
             getline(ss, token, ',');
-            temp_point = stof(token);
-            path.x.push(temp_point + robotPose.x);
-            std::cout << "path.x = " << temp_point + robotPose.x ;
-
-            // std::cout << "size.y = " << path.y.size() << std::endl;
+            temp_point_x = stof(token);
 
             getline(ss, token, ',');
-            temp_point = stof(token);
-            path.y.push(temp_point + robotPose.y);
-            std::cout << " path.y = " << temp_point + robotPose.y ;
-
-            // std::cout << "pose.y = " << robotPose.y << " input.y = " << temp_point << " path.y.front() = " << path.y.front() << std::endl; 
+            temp_point_y = stof(token);
 
             getline(ss, token, ',');
-            temp_point = stof(token);
-            path.z.push(temp_point + robotPose.z);
-            std::cout << " path.z = " << temp_point + robotPose.z << std::endl;
+            temp_point_z = stof(token);
+
+            path.x.push(robotPose.x + temp_point_x*cos(Robot_Pose.z) - temp_point_y*sin(Robot_Pose.z));
+            std::cout << "path.x = " << robotPose.x + temp_point_x*cos(Robot_Pose.z) - temp_point_y*sin(Robot_Pose.z);
+
+            path.y.push(robotPose.y + temp_point_x*sin(Robot_Pose.z) + temp_point_y*cos(Robot_Pose.z));
+            std::cout << " path.y = " << robotPose.x + temp_point_x*cos(Robot_Pose.z) - temp_point_y*sin(Robot_Pose.z);
+
+            path.z.push(temp_point_z + robotPose.z);
+            std::cout << " path.z = " << temp_point_z + robotPose.z << std::endl;
 
        }
     }
@@ -341,7 +345,7 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robotPose, Pose_t targetPose, float 
     static float prevError[3] = {0, 0, 0};
     static float sumError[3] = {0, 0, 0};
 
-    float kp[3] = {40, 40, 40};
+    float kp[3] = {40, 40, 10};
     float ki[3] = {0, 0, 0};
     float kd[3] = {0, 0, 0};
 
@@ -400,6 +404,18 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robotPose, Pose_t targetPose, float 
     return speedRobot;
 }
 
+void Robot::GlobalToLocalSpeed(Pose_t robotPose)
+{
+    Pose_t globalSpeed;
+    globalSpeed.x = RobotSpeed[0];
+    globalSpeed.y = RobotSpeed[1];
+    globalSpeed.z = RobotSpeed[2];
+
+    RobotSpeed[0] = globalSpeed.x*cos(robotPose.z) + globalSpeed.y*sin(robotPose.z);
+    RobotSpeed[1] = -globalSpeed.x*sin(robotPose.z) + globalSpeed.y*cos(robotPose.z);
+    RobotSpeed[2] = globalSpeed.z;
+}
+
 
 void Robot::Path_Callback (const nav_msgs::Path::ConstPtr &path_msg)
 {
@@ -412,6 +428,8 @@ void Robot::Path_Callback (const nav_msgs::Path::ConstPtr &path_msg)
 }
 void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg)
 {
+    float offset = 1.57079633;
+
     Robot_Pose.x = pose_msg->pose.pose.position.x;
     Robot_Pose.y = pose_msg->pose.pose.position.y;
 
@@ -427,5 +445,5 @@ void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::Const
     
     m.getRPY(roll, pitch, yaw);
     
-    Robot_Pose.z = yaw;    
+    Robot_Pose.z = yaw - offset;    
 }

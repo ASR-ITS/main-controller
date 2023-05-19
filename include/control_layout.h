@@ -114,6 +114,7 @@ private:
     void ClearPath(Path_t &path);
     Pose_t PurePursuit(Pose_t robotPose, Path_t &path, float offset);
     Pose_t PointToPointPID(Pose_t robotPose, Pose_t targetPose, float maxSpeed);
+    void GlobalToLocalSpeed(Pose_t robotPose);
 
     void JoyCallback            (const sensor_msgs::Joy::ConstPtr &msgJoy);
     void JoyBatteryCallback     (const sensor_msgs::BatteryState::ConstPtr &MsgJoyBatt);
