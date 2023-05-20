@@ -99,8 +99,8 @@ Robot::Robot(): RosRate(100)
                 pure_pursuit_vel = PointToPointPID(robot_pose, target_pose, 20);
 
                 // Convert to Velocity Command (x-y is switched because odom is switched)
-                RobotSpeed[0] = (int) pure_pursuit_vel.y;
-                RobotSpeed[1] = (int) pure_pursuit_vel.x * -1;
+                RobotSpeed[0] = (int) pure_pursuit_vel.y * -1;
+                RobotSpeed[1] = (int) pure_pursuit_vel.x;
                 RobotSpeed[2] = 0; // Remove Yaw Control for TESTING Purposes;
 
                 pure_pursuit_msg.linear.x  = RobotSpeed[0];

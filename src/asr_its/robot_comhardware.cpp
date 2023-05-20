@@ -26,17 +26,17 @@ Comhardware::~Comhardware(){};
 
 void Comhardware::SerialTransmitEvent(const ros::TimerEvent &event)
 {
-    char data_kirim[23] = {'m', 'r', 'i'};
+    char data_kirim[11] = {'m', 'r', 'i'};
     memcpy(data_kirim + 3, &RobotSpeed[0], 2);
     memcpy(data_kirim + 5, &RobotSpeed[1], 2);
     memcpy(data_kirim + 7, &RobotSpeed[2], 2);
     data_kirim[9] = BitLamp;
     data_kirim[10] = StatusControl;
-    memcpy(data_kirim + 11, &OffsetPos[0], 4);
-    memcpy(data_kirim + 15, &OffsetPos[1], 4);
-    memcpy(data_kirim + 19, &OffsetPos[2], 4);
+    // memcpy(data_kirim + 11, &OffsetPos[0], 4);
+    // memcpy(data_kirim + 15, &OffsetPos[1], 4);
+    // memcpy(data_kirim + 19, &OffsetPos[2], 4);
 
-    RS232_SendBuf(Cport_nr, (unsigned char *)data_kirim, 23);
+    RS232_SendBuf(Cport_nr, (unsigned char *)data_kirim, 11);
 
 }
 

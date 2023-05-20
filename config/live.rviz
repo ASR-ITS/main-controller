@@ -54,134 +54,15 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 0.699999988079071
+    - Alpha: 1
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
       Enabled: true
       Name: Map
-      Topic: /rtabmap/grid_map
+      Topic: /grid_map
       Unreliable: false
       Use Timestamp: false
-      Value: true
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/PoseWithCovariance
-      Color: 255; 25; 0
-      Covariance:
-        Orientation:
-          Alpha: 0.5
-          Color: 255; 255; 127
-          Color Style: Unique
-          Frame: Local
-          Offset: 1
-          Scale: 1
-          Value: true
-        Position:
-          Alpha: 0.30000001192092896
-          Color: 204; 51; 204
-          Scale: 1
-          Value: true
-        Value: true
-      Enabled: true
-      Head Length: 0.30000001192092896
-      Head Radius: 0.10000000149011612
-      Name: Current Pose
-      Queue Size: 10
-      Shaft Length: 1
-      Shaft Radius: 0.05000000074505806
-      Shape: Arrow
-      Topic: /amcl_pose
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Arrow Length: 0.30000001192092896
-      Axes Length: 0.30000001192092896
-      Axes Radius: 0.009999999776482582
-      Class: rviz/PoseArray
-      Color: 255; 25; 0
-      Enabled: true
-      Head Length: 0.07000000029802322
-      Head Radius: 0.029999999329447746
-      Name: AMCL Particle
-      Queue Size: 10
-      Shaft Length: 0.23000000417232513
-      Shaft Radius: 0.009999999776482582
-      Shape: Arrow (Flat)
-      Topic: /particlecloud
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/Pose
-      Color: 200; 50; 0
-      Enabled: true
-      Head Length: 0.10000000149011612
-      Head Radius: 0.10000000149011612
-      Name: Goal Pose
-      Queue Size: 10
-      Shaft Length: 0.30000001192092896
-      Shaft Radius: 0.05000000074505806
-      Shape: Arrow
-      Topic: /goal
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/PoseWithCovariance
-      Color: 0; 200; 0
-      Covariance:
-        Orientation:
-          Alpha: 0.5
-          Color: 255; 255; 127
-          Color Style: Unique
-          Frame: Local
-          Offset: 1
-          Scale: 1
-          Value: true
-        Position:
-          Alpha: 0.30000001192092896
-          Color: 204; 51; 204
-          Scale: 1
-          Value: true
-        Value: true
-      Enabled: true
-      Head Length: 0.30000001192092896
-      Head Radius: 0.10000000149011612
-      Name: Initial Pose
-      Queue Size: 10
-      Shaft Length: 1
-      Shaft Radius: 0.05000000074505806
-      Shape: Arrow
-      Topic: /initialpose
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 25; 255; 0
-      Enabled: true
-      Head Diameter: 0
-      Head Length: 0.10000000149011612
-      Length: 0.30000001192092896
-      Line Style: Billboards
-      Line Width: 0.10000000149011612
-      Name: Path
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 0; 255; 0
-      Pose Style: None
-      Queue Size: 10
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.10000000149011612
-      Shaft Length: 0.10000000149011612
-      Topic: /path
-      Unreliable: false
       Value: true
     - Class: rviz/TF
       Enabled: true
@@ -189,7 +70,7 @@ Visualization Manager:
       Frames:
         All Enabled: false
         base_link:
-          Value: false
+          Value: true
         ds4:
           Value: false
         ds4_imu:
@@ -266,7 +147,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 8.648591041564941
+      Distance: 10.491727828979492
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -282,9 +163,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9847968816757202
+      Pitch: 1.0747959613800049
       Target Frame: <Fixed Frame>
-      Yaw: 3.285398483276367
+      Yaw: 0.05721252039074898
     Saved: ~
 Window Geometry:
   Displays:
