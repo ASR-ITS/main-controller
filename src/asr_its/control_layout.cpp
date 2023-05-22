@@ -20,6 +20,8 @@ Robot::Robot(): RosRate(100)
     Pub_Joy_Feedback   = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
     Pub_Pure_Pursuit   = Nh.advertise<geometry_msgs::Twist>("/pure_pursuit_vel", 10);
 
+    Rumble_Timer       = Nh.createTimer(ros::Duration(0.75), &Robot::Rumble_Off, this);
+
     // Initialize Speed Variable
     for (int i = 0; i <=2 ; i++)
     {
@@ -62,6 +64,13 @@ Robot::Robot(): RosRate(100)
         }
         Controller.prev_button[TRIANGLE] = Controller.Buttons[TRIANGLE];
 
+        // Clear Path Generated using CIRCLE Button
+        if (Controller.Buttons[CIRCLE] == 0 && Controller.prev_button[CIRCLE] == 1)
+        {
+            ClearPath(path);
+        }
+        Controller.prev_button[CIRCLE] = Controller.Buttons[CIRCLE];
+
         // Print Robot Speed to Screen
         std::cout << "x : " << RobotSpeed[0] << " y : " << RobotSpeed[1] << " Theta : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
 
@@ -80,7 +89,7 @@ Robot::Robot(): RosRate(100)
         // Go to Autonomous Mode
         if (GuidedMode)
         {
-            // Go to AUTONOMOUS Mode with WHITE Indicator
+            // Go to AUTONOMOUS Mode with YELLOW Indicator
             if (vel_msg.StatusControl)
             {
                 // Set LED Feedback
@@ -107,7 +116,7 @@ Robot::Robot(): RosRate(100)
                 pure_pursuit_msg.linear.y  = RobotSpeed[1];
                 pure_pursuit_msg.angular.z = RobotSpeed[2];
 
-                // Obstacle Avoidance Control with YELLOW Indicator
+                // Obstacle Avoidance Control with WHITE Indicator
                 if(obstacle_status)
                 {
                     // Set LED Feedback
@@ -121,7 +130,7 @@ Robot::Robot(): RosRate(100)
                 }
             }
 
-            // Pause AUTONOMOUS Mode with PURPLE Indicator
+            // Pause AUTONOMOUS Mode with RED Indicator
             else
             {
                 // Set LED Feedback
@@ -141,7 +150,6 @@ Robot::Robot(): RosRate(100)
         // Go to Manual Control Mode
         else
         {
-            ClearPath(path);
             // Go to Manual Control RUN Mode with GREEN Indicator
             if (vel_msg.StatusControl)
             {
@@ -257,6 +265,13 @@ void Robot::Obstacle_Vel_Callback    (const geometry_msgs::Twist::ConstPtr &obs_
     obstacle_avoider_vel.z = obs_vel_msg->angular.z;
 }
 
+void Robot::Rumble_Event (const ros::TimerEvent &event)
+{
+    MsgJoyRumble.type       = 1;
+    MsgJoyRumble.id         = 1;
+    MsgJoyRumble.intensity  = 0.0;  
+}
+
 void Robot::ClearPath(Path_t &path)
 {
     while(!path.x.empty())
@@ -282,18 +297,22 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robotPose, Path_t &path, float offset)
     targetPose.z = path.z.front();
     distance = sqrt(pow((targetPose.x - robotPose.x), 2) + pow((targetPose.y - robotPose.y), 2));
     
-    if(pathLeft > 1){    
-        while(distance < offset && pathLeft > 1){
+    if(pathLeft > 1)
+    {    
+        while(distance < offset && pathLeft > 1)
+        {
             path.x.pop(); targetPose.x = path.x.front();
             path.y.pop(); targetPose.y = path.y.front();  
             path.z.pop(); targetPose.z = path.z.front();
             distance = sqrt(pow((targetPose.x - robotPose.x), 2) + pow((targetPose.y - robotPose.y), 2));
         }
     }
-    else{
-        targetPose.x = path.x.front();
-        targetPose.y = path.y.front();
-        targetPose.z = path.z.front();
+    else
+    {
+        // targetPose.x = path.x.front();
+        // targetPose.y = path.y.front();
+        // targetPose.z = path.z.front();
+        ClearPath(path);
     }
 
     // Debug

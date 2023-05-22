@@ -123,5 +123,5 @@ private:
     void Pose_Callback            (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);
     void Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status_msg);
     void Obstacle_Vel_Callback    (const geometry_msgs::Twist::ConstPtr &obs_vel_msg);
-
+    void Rumble_Event             (const ros::TimerEvent &event)
 };
