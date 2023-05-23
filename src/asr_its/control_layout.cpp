@@ -13,6 +13,7 @@ Robot::Robot(): RosRate(100)
     Sub_Path           = Nh.subscribe("/path", 10, &Robot::Path_Callback, this);
     Sub_Pose           = Nh.subscribe("/amcl_pose", 10, &Robot::Pose_Callback, this);
 
+    Sub_Crashed        = Nh.subscribe("/crashed", 10, &Robot::Crashed_Status_Callback, this);
     Sub_Obstacle       = Nh.subscribe("/obstacle_detected", 10, &Robot::Obstacle_Status_Callback, this);
     Sub_Obs_Vel        = Nh.subscribe("/obs_vel", 10, &Robot::Obstacle_Vel_Callback, this);
 
@@ -20,7 +21,7 @@ Robot::Robot(): RosRate(100)
     Pub_Joy_Feedback   = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
     Pub_Pure_Pursuit   = Nh.advertise<geometry_msgs::Twist>("/pure_pursuit_vel", 10);
 
-    Rumble_Timer       = Nh.createTimer(ros::Duration(0.75), &Robot::Rumble_Off, this);
+    // Rumble_Timer       = Nh.createTimer(ros::Duration(0.75), &Robot::Rumble_Event, this);
 
     // Initialize Speed Variable
     for (int i = 0; i <=2 ; i++)
@@ -53,9 +54,10 @@ Robot::Robot(): RosRate(100)
     // Initialize Pure Purusit
     Pose_t target_pose;
     Pose_t pure_pursuit_vel;
+    bool prev_crashed = 0;
 
     while(ros::ok())
-    {    
+    {   
         // Set Status Control using TRIANGLE Button
         if (Controller.Buttons[TRIANGLE] == 0 && Controller.prev_button[TRIANGLE] == 1)
         {
@@ -72,20 +74,37 @@ Robot::Robot(): RosRate(100)
         Controller.prev_button[CIRCLE] = Controller.Buttons[CIRCLE];
 
         // Print Robot Speed to Screen
-        std::cout << "x : " << RobotSpeed[0] << " y : " << RobotSpeed[1] << " Theta : " << RobotSpeed[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
+        // std::cout << "x : " << robot_vel[0] << " y : " << robot_vel[1] << " Theta : " << robot_vel[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
+
+        // Clear Path if Robot CRASHED
+        if (prev_crashed == 0 && crashed_status == 1)
+        {
+            ClearPath(path);
+            for(int i = 0; i<=2; i++)
+            {
+                robot_vel[i] = 0;
+            }
+        }
+        prev_crashed = crashed_status;
 
         // Set Mode Using OPTIONS Button
         if (Controller.Buttons[OPTIONS] == 0 && Controller.prev_button[OPTIONS] == 1)
         {
             GuidedMode ^= 1;
             // Set Rumble Feedback
-            MsgJoyRumble.type       = 1;
-            MsgJoyRumble.id         = 1;
+            rumble_status = 1;
             MsgJoyRumble.intensity  = 0.5;
+            prev_time = ros::Time::now();
         }
         Controller.prev_button[OPTIONS] = Controller.Buttons[OPTIONS];
 
-        MsgJoyRumble.intensity  = 0.0;
+        // Rumble Feedback Event
+        if (rumble_status && ros::Time::now() - prev_time >= ros::Duration(0.75))
+        {
+            MsgJoyRumble.intensity  = 0.0;
+            rumble_status = 0;
+        }
+
         // Go to Autonomous Mode
         if (GuidedMode)
         {
@@ -99,22 +118,26 @@ Robot::Robot(): RosRate(100)
 
                 // Prevent going to origin if there's no path
                 if(path.x.size() <= 0)
+                {
                     target_pose = robot_pose;
+                }
                 // Search for Closest Node
                 else
+                {
                     target_pose = PurePursuit(robot_pose, path, 0.5);
+                }
 
                 // Pure Pursuit PID
                 pure_pursuit_vel = PointToPointPID(robot_pose, target_pose, 20);
 
                 // Convert to Velocity Command (x-y is switched because odom is switched)
-                RobotSpeed[0] = (int) pure_pursuit_vel.y * -1;
-                RobotSpeed[1] = (int) pure_pursuit_vel.x;
-                RobotSpeed[2] = 0; // Remove Yaw Control for TESTING Purposes;
+                robot_vel[0] = (int) pure_pursuit_vel.y * -1;
+                robot_vel[1] = (int) pure_pursuit_vel.x;
+                robot_vel[2] = 0; // Remove Yaw Control for TESTING Purposes;
 
-                pure_pursuit_msg.linear.x  = RobotSpeed[0];
-                pure_pursuit_msg.linear.y  = RobotSpeed[1];
-                pure_pursuit_msg.angular.z = RobotSpeed[2];
+                pure_pursuit_msg.linear.x  = robot_vel[0];
+                pure_pursuit_msg.linear.y  = robot_vel[1];
+                pure_pursuit_msg.angular.z = robot_vel[2];
 
                 // Obstacle Avoidance Control with WHITE Indicator
                 if(obstacle_status)
@@ -124,9 +147,9 @@ Robot::Robot(): RosRate(100)
                     MsgJoyLED_G.intensity = 1.0;
                     MsgJoyLED_B.intensity = 1.0;
 
-                    RobotSpeed[0] = obstacle_avoider_vel.x;
-                    RobotSpeed[1] = obstacle_avoider_vel.y;
-                    RobotSpeed[2] = obstacle_avoider_vel.z;
+                    robot_vel[0] = obstacle_avoider_vel.x;
+                    robot_vel[1] = obstacle_avoider_vel.y;
+                    robot_vel[2] = obstacle_avoider_vel.theta;
                 }
             }
 
@@ -141,7 +164,7 @@ Robot::Robot(): RosRate(100)
                 // Set Robot Speed to Zero (Safety Issues)
                 for(int i = 0; i<=2; i++)
                 {
-                    RobotSpeed[i] = 0;
+                    robot_vel[i] = 0;
                 }    
             }
 
@@ -159,9 +182,9 @@ Robot::Robot(): RosRate(100)
                 MsgJoyLED_B.intensity = 0.13;
 
                 // Set Robot Speed from Joy Axis
-                RobotSpeed[0] = -1 * Controller.Axis[0] * 20;
-                RobotSpeed[1] = Controller.Axis[1] * 20;
-                RobotSpeed[2] = Controller.Axis[2] * 15;
+                robot_vel[0] = -1 * Controller.Axis[0] * 20;
+                robot_vel[1] = Controller.Axis[1] * 20;
+                robot_vel[2] = Controller.Axis[2] * 15;
             }
 
             // Go to Manual Control LOCK Mode with RED Indicator
@@ -175,7 +198,7 @@ Robot::Robot(): RosRate(100)
                 // Set Robot Speed to Zero (Safety Issues)
                 for(int i = 0; i<=2; i++)
                 {
-                    RobotSpeed[i] = 0;
+                    robot_vel[i] = 0;
                 }     
             }
         }
@@ -183,7 +206,7 @@ Robot::Robot(): RosRate(100)
         // Push Robot Variable to Publisher Var
         for(int i = 0 ; i<=2 ; i++)
         {
-            vel_msg.data.at(i) = RobotSpeed[i];
+            vel_msg.data.at(i) = robot_vel[i];
         }
 
         MsgJoyFeedbackArray.array.at(0) = MsgJoyLED_R;
@@ -227,16 +250,12 @@ void Robot::Path_Callback (const nav_msgs::Path::ConstPtr &path_msg)
     {
         path.x.push(path_msg->poses[i].pose.position.x);
         path.y.push(path_msg->poses[i].pose.position.y);
-        path.z.push(path_msg->poses[i].pose.position.z);       
+        path.theta.push(path_msg->poses[i].pose.position.z);       
     }
 }
 
 void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg)
 {
-    robot_pose.x = pose_msg->pose.pose.position.x;
-    robot_pose.y = pose_msg->pose.pose.position.y;
-    robot_pose.z = pose_msg->pose.pose.position.z;
-
     tf::Quaternion q(
         pose_msg->pose.pose.orientation.x,
         pose_msg->pose.pose.orientation.y,
@@ -245,12 +264,11 @@ void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::Const
 
     tf::Matrix3x3 m(q);
 
-    double roll, pitch, yaw;
-
     m.getRPY(roll, pitch, yaw);
-    
-    robot_pose.z = yaw;
 
+    robot_pose.x = pose_msg->pose.pose.position.x;
+    robot_pose.y = pose_msg->pose.pose.position.y;   
+    robot_pose.theta = yaw;
 }
 
 void Robot::Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status_msg)
@@ -258,19 +276,24 @@ void Robot::Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status
     obstacle_status = obs_status_msg->data;
 }
 
+void Robot::Crashed_Status_Callback (const std_msgs::Bool::ConstPtr &crashed_msg)
+{
+    crashed_status = crashed_msg->data;
+}
+
 void Robot::Obstacle_Vel_Callback    (const geometry_msgs::Twist::ConstPtr &obs_vel_msg)
 {
     obstacle_avoider_vel.x = obs_vel_msg->linear.x;
     obstacle_avoider_vel.y = obs_vel_msg->linear.y;
-    obstacle_avoider_vel.z = obs_vel_msg->angular.z;
+    obstacle_avoider_vel.theta = obs_vel_msg->angular.z;
 }
 
-void Robot::Rumble_Event (const ros::TimerEvent &event)
-{
-    MsgJoyRumble.type       = 1;
-    MsgJoyRumble.id         = 1;
-    MsgJoyRumble.intensity  = 0.0;  
-}
+// void Robot::Rumble_Event (const ros::TimerEvent &event)
+// {
+//     MsgJoyRumble.type       = 1;
+//     MsgJoyRumble.id         = 1;
+//     MsgJoyRumble.intensity  = 0.0;  
+// }
 
 void Robot::ClearPath(Path_t &path)
 {
@@ -278,53 +301,53 @@ void Robot::ClearPath(Path_t &path)
     {
         path.x.pop();
         path.y.pop();
-        path.z.pop();
+        path.theta.pop();
     }
 }
 
-Robot::Pose_t Robot::PurePursuit(Pose_t robotPose, Path_t &path, float offset)
+Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset)
 {
 
-    Pose_t targetPose;
-    targetPose = robotPose;
+    Pose_t target_pose;
+    target_pose = robot_pose;
 
     float distance = 0;
     static float epsilon = 0.1;
     int pathLeft = path.x.size();
 
-    targetPose.x = path.x.front();
-    targetPose.y = path.y.front();
-    targetPose.z = path.z.front();
-    distance = sqrt(pow((targetPose.x - robotPose.x), 2) + pow((targetPose.y - robotPose.y), 2));
+    target_pose.x = path.x.front();
+    target_pose.y = path.y.front();
+    target_pose.theta = path.theta.front();
+    distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
     
     if(pathLeft > 1)
     {    
         while(distance < offset && pathLeft > 1)
         {
-            path.x.pop(); targetPose.x = path.x.front();
-            path.y.pop(); targetPose.y = path.y.front();  
-            path.z.pop(); targetPose.z = path.z.front();
-            distance = sqrt(pow((targetPose.x - robotPose.x), 2) + pow((targetPose.y - robotPose.y), 2));
+            path.x.pop(); target_pose.x = path.x.front();
+            path.y.pop(); target_pose.y = path.y.front();  
+            path.theta.pop(); target_pose.theta = path.theta.front();
+            distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
         }
     }
     else
     {
-        // targetPose.x = path.x.front();
-        // targetPose.y = path.y.front();
-        // targetPose.z = path.z.front();
-        ClearPath(path);
+        target_pose.x = path.x.front();
+        target_pose.y = path.y.front();
+        target_pose.theta = path.theta.front();
+        // ClearPath(path);
     }
 
     // Debug
     std::cout << "path left = " << pathLeft << std::endl;
 
-    return targetPose;
+    return target_pose;
 }
 
-Robot::Pose_t Robot::PointToPointPID(Pose_t robotPose, Pose_t targetPose, float maxSpeed)
+Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, float maxSpeed)
 {
-    Pose_t speedRobot;
-    speedRobot.x = speedRobot.y = speedRobot.z = 0;
+    Pose_t robot_vel;
+    robot_vel.x = robot_vel.y = robot_vel.theta = 0;
 
     float output[3] = {0, 0, 0};
 
@@ -340,9 +363,9 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robotPose, Pose_t targetPose, float 
     float ki[3] = {0, 0, 0};
     float kd[3] = {0, 0, 0};
 
-    error[0] = targetPose.x - robotPose.x;
-    error[1] = targetPose.y - robotPose.y;
-    error[2] = targetPose.z - robotPose.z; 
+    error[0] = target_pose.x - robot_pose.x;
+    error[1] = target_pose.y - robot_pose.y;
+    error[2] = target_pose.theta - robot_pose.theta; 
 
     if(abs(error[2]) >= MATH_PI){
         if(error[2] > 0){
@@ -388,10 +411,10 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robotPose, Pose_t targetPose, float 
         }
     }
 
-    speedRobot.x = output[0];
-    speedRobot.y = output[1];
-    speedRobot.z = output[2];
+    robot_vel.x = output[0];
+    robot_vel.y = output[1];
+    robot_vel.theta = output[2];
 
-    return speedRobot;
+    return robot_vel;
 }
 

@@ -40,12 +40,15 @@ public:
     ~Robot();
 
 private:
-    int     RobotSpeed[3]      = {0, 0, 0};
+    int     robot_vel[3]       = {0, 0, 0};
     uint8_t StatusControl      = 0;
     uint8_t GuidedMode         = 0;
     bool    obstacle_status;
     float   JoyBatt            = 0.0;
-    
+    double  roll, pitch, yaw;
+    bool    rumble_status;   
+    bool    crashed_status; 
+
     struct DS4_t 
     {
         uint8_t Buttons[18];
@@ -56,13 +59,13 @@ private:
     struct Path_t{
         std::queue<float> x;
         std::queue<float> y;
-        std::queue<float> z;
+        std::queue<float> theta;
     };
 
     struct Pose_t{
         float x;
         float y;
-        float z;
+        float theta;
     };
 
     typedef enum
@@ -93,6 +96,7 @@ private:
     ros::Subscriber     Sub_Joy_Battery;
     ros::Subscriber     Sub_Path;
     ros::Subscriber     Sub_Pose;
+    ros::Subscriber     Sub_Crashed;
     ros::Subscriber     Sub_Obstacle;
     ros::Subscriber     Sub_Obs_Vel;
     
@@ -100,6 +104,7 @@ private:
     ros::Publisher      Pub_Joy_Feedback;
     ros::Publisher      Pub_Pure_Pursuit;
     ros::Rate           RosRate;
+    ros::Time           prev_time;
 
     sensor_msgs::JoyFeedback        MsgJoyLED_R;
     sensor_msgs::JoyFeedback        MsgJoyLED_G;
@@ -121,7 +126,8 @@ private:
     void Joy_Battery_Callback     (const sensor_msgs::BatteryState::ConstPtr &joy_batt_msg);
     void Path_Callback            (const nav_msgs::Path::ConstPtr &path_msg);
     void Pose_Callback            (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);
+    void Crashed_Status_Callback  (const std_msgs::Bool::ConstPtr &crashed_msg);
     void Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status_msg);
     void Obstacle_Vel_Callback    (const geometry_msgs::Twist::ConstPtr &obs_vel_msg);
-    void Rumble_Event             (const ros::TimerEvent &event)
+    // void Rumble_Event             (const ros::TimerEvent &event)
 };
