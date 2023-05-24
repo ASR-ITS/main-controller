@@ -20,7 +20,7 @@
     
     <!-- Run Lidar Node -->
     <include file="$(find rplidar_ros)/launch/rplidar.launch" />
-    <node pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster_node" args="-0.12 0 0 3.4 0 0 base_link laser 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster_node" args="0.12 0 0 3.4 0 0 base_link laser 100"/>
 
     <!-- Run STM32 Communication Node -->
     <node pkg="main_controller" type="robot_comhardware_node" name="comhardware_node" />
