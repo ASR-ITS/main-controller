@@ -100,6 +100,7 @@ private:
     ros::Publisher      Pub_Joy_Feedback;
     ros::Publisher      Pub_Pure_Pursuit;
     ros::Rate           RosRate;
+    ros::Timer          Rumble_Timer;
 
     sensor_msgs::JoyFeedback        MsgJoyLED_R;
     sensor_msgs::JoyFeedback        MsgJoyLED_G;
@@ -123,5 +124,5 @@ private:
     void Pose_Callback            (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);
     void Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status_msg);
     void Obstacle_Vel_Callback    (const geometry_msgs::Twist::ConstPtr &obs_vel_msg);
-    void Rumble_Event             (const ros::TimerEvent &event)
+    void Rumble_Event             (const ros::TimerEvent &event);
 };

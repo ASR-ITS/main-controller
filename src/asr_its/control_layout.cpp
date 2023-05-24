@@ -20,7 +20,7 @@ Robot::Robot(): RosRate(100)
     Pub_Joy_Feedback   = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
     Pub_Pure_Pursuit   = Nh.advertise<geometry_msgs::Twist>("/pure_pursuit_vel", 10);
 
-    Rumble_Timer       = Nh.createTimer(ros::Duration(0.75), &Robot::Rumble_Off, this);
+    Rumble_Timer       = Nh.createTimer(ros::Duration(0.75), &Robot::Rumble_Event, this);
 
     // Initialize Speed Variable
     for (int i = 0; i <=2 ; i++)
