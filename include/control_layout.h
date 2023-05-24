@@ -27,6 +27,7 @@
 #include <iostream>
 #include <string>
 #include <queue>
+#include <array>
 #include "stdio.h"
 #include "stdlib.h"
 
@@ -45,9 +46,8 @@ private:
     uint8_t GuidedMode         = 0;
     bool    obstacle_status;
     float   JoyBatt            = 0.0;
-    double  roll, pitch, yaw;
     bool    rumble_status;   
-    bool    crashed_status; 
+    bool    crashed_status, prev_crashed; 
 
     struct DS4_t 
     {
@@ -89,6 +89,10 @@ private:
     DS4_t Controller;
     Path_t path;
     Pose_t robot_pose;
+    Pose_t next_pose;
+
+    Pose_t local_vel;
+    Pose_t pure_pursuit_vel;
     Pose_t obstacle_avoider_vel;
 
     ros::NodeHandle     Nh;
@@ -115,12 +119,10 @@ private:
 
     main_controller::ControllerData         vel_msg;
 
-    // void ReadPath(std::string fileName, Path_t &path);
-    // void ReadPathRelative(std::string fileName, Path_t &path, Pose_t robotPose);
-    
-    void ClearPath(Path_t &path);
-    Pose_t PurePursuit(Pose_t robotPose, Path_t &path, float offset);
-    Pose_t PointToPointPID(Pose_t robotPose, Pose_t targetPose, float maxSpeed);
+    void ClearPath                (Path_t &path);
+    Pose_t PurePursuit            (Pose_t robotPose, Path_t &path, float offset);
+    Pose_t PointToPointPID        (Pose_t robotPose, Pose_t targetPose, float maxSpeed);
+    Pose_t Global_to_Local_Vel    (Pose_t robot_pose, Pose_t global_vel);
 
     void Joy_Callback             (const sensor_msgs::Joy::ConstPtr &joy_msg);
     void Joy_Battery_Callback     (const sensor_msgs::BatteryState::ConstPtr &joy_batt_msg);
@@ -129,5 +131,4 @@ private:
     void Crashed_Status_Callback  (const std_msgs::Bool::ConstPtr &crashed_msg);
     void Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status_msg);
     void Obstacle_Vel_Callback    (const geometry_msgs::Twist::ConstPtr &obs_vel_msg);
-    // void Rumble_Event             (const ros::TimerEvent &event)
 };
