@@ -432,6 +432,7 @@ void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::Const
 
     Robot_Pose.x = pose_msg->pose.pose.position.x;
     Robot_Pose.y = pose_msg->pose.pose.position.y;
+    Robot_Pose.z = pose_msg->pose.pose.position.z;
 
     tf::Quaternion q(
         pose_msg->pose.pose.orientation.x,

@@ -3,6 +3,8 @@
 #include <termios.h>
 #include <unistd.h>
 
+#define MATH_PI 3.1415926535897932
+
 int getch() {
     static struct termios oldt, newt;
     tcgetattr(STDIN_FILENO, &oldt);
@@ -47,9 +49,25 @@ int main(int argc, char** argv) {
                 cmd_odom.pose.pose.position.x += 0.05;
                 printf("d");
                 break;
+            case 'e':
+                cmd_odom.pose.pose.position.z += 0.05;
+                printf("e");
+                break;
+            case 'q':
+                cmd_odom.pose.pose.position.z -= 0.05;
+                printf("q");
+                break;
             // default:
             //     cmd_vel.linear.x = 0.0;
             //     cmd_vel.angular.z = 0.0;
+        }
+        if (cmd_odom.pose.pose.position.z > 180)
+        {
+            cmd_odom.pose.pose.position.z = -180;
+        }
+        else if (cmd_odom.pose.pose.position.z < -180)
+        {
+            cmd_odom.pose.pose.position.z = 180;
         }
 
         odom_pub.publish(cmd_odom);
