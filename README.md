@@ -4,22 +4,25 @@ Main Control Layout for Service Robot ASR-ITS
 ## Usage
 ```bash
 # Push PS Button on Controller
+# Use this command if Controller not connected
 cd
 ./ds4_autoconnect.sh
 
 # Connect STM32 Cable to PC
-cd slam_ws
-source devel/setup.bash
-sudo chmod 777 /dev/ttyUSB0
-
 # Connect RPLidar Data+Power Cable to PC
-sudo chmod 777 /dev/ttyUSB1
+cd 
+./chmodbus01.sh
 
 # Connect ZED Camera Cable to PC
 roslaunch zed_wrapper zed2i.launch
 
 # Launch Main File
+cd slam_ws
+source devel/setup.bash
 roslaunch main_controller asr_its.launch
+
+# Use Waypoint Generator if Needed
+rosrun path_planning waypoint.py
 ```
 
 ## Dependencies
