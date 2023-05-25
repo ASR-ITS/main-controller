@@ -70,7 +70,7 @@ Robot::Robot(): RosRate(100)
 
         // Print Robot Speed (DEBUG)
         // std::cout << "x : " << robot_vel[0] << " y : " << robot_vel[1] << " Theta : " << robot_vel[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
-
+        std::cout << "pose theta : " << robot_pose.theta*(180/MATH_PI) << std::endl;
         // Set Mode Using OPTIONS Button
         if (Controller.Buttons[OPTIONS] == 0 && Controller.prev_button[OPTIONS] == 1)
         {
@@ -425,8 +425,10 @@ Robot::Pose_t Robot::Global_to_Local_Vel(Pose_t robot_pose, Pose_t global_vel)
 {
     Pose_t local_vel;
 
-    local_vel.x = global_vel.x * cos(robot_pose.theta) + global_vel.y * sin(robot_pose.theta);
-    local_vel.y = global_vel.x * sin(robot_pose.theta) + global_vel.y * cos(robot_pose.theta);
+    local_vel.x = global_vel.x * sin(robot_pose.theta) - global_vel.y * cos(robot_pose.theta);
+    local_vel.y = global_vel.x * cos(robot_pose.theta) + global_vel.y * sin(robot_pose.theta);
+    // local_vel.y = 0;
+
     local_vel.theta = global_vel.theta;
 
     return local_vel;
