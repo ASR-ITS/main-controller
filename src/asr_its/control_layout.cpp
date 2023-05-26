@@ -70,7 +70,7 @@ Robot::Robot(): RosRate(100)
 
         // Print Robot Speed (DEBUG)
         // std::cout << "x : " << robot_vel[0] << " y : " << robot_vel[1] << " Theta : " << robot_vel[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
-        std::cout << "pose theta : " << robot_pose.theta*(180/MATH_PI) << std::endl;
+        // std::cout << "pose theta : " << robot_pose.theta*(180/MATH_PI) << std::endl;
         // Set Mode Using OPTIONS Button
         if (Controller.Buttons[OPTIONS] == 0 && Controller.prev_button[OPTIONS] == 1)
         {
@@ -117,11 +117,11 @@ Robot::Robot(): RosRate(100)
                 // Search for Closest Node
                 else
                 {
-                    next_pose = PurePursuit(robot_pose, path, 0.5);
+                    next_pose = PurePursuit(robot_pose, path, 0.1);
                 }
 
                 // Pure Pursuit PID
-                pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 20);
+                pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 45);
 
                 // Push Pure Pursuit Velocity to Publisher Messages
                 pure_pursuit_msg.linear.x  = pure_pursuit_vel.x;
@@ -176,8 +176,8 @@ Robot::Robot(): RosRate(100)
                 MsgJoyLED_B.intensity = 0.13;
 
                 // Set Robot Speed from Joy Axis
-                robot_vel[0] = -1 * Controller.Axis[0] * 20;
-                robot_vel[1] = Controller.Axis[1] * 20;
+                robot_vel[0] = -1 * Controller.Axis[0] * 45;
+                robot_vel[1] = Controller.Axis[1] * 45;
                 robot_vel[2] = Controller.Axis[2] * 15;
             }
 
@@ -338,7 +338,7 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset)
     {
         target_pose.x = path.x.front();
         target_pose.y = path.y.front();
-        target_pose.theta = path.theta.front();
+        target_pose.theta = path.theta.front()/* - 90 * (MATH_PI/180)*/;
     }
 
     // Debug
@@ -362,9 +362,9 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
     static float prevError[3] = {0, 0, 0};
     static float sumError[3] = {0, 0, 0};
 
-    float kp[3] = {40, 40, 40};
+    float kp[3] = {225, 225, 20};
     float ki[3] = {0, 0, 0};
-    float kd[3] = {0, 0, 0};
+    float kd[3] = {25, 25, 0};
 
     error[0] = target_pose.x - robot_pose.x;
     error[1] = target_pose.y - robot_pose.y;
@@ -418,7 +418,10 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
     robot_vel.y = output[1];
     robot_vel.theta = output[2];
 
+    std::cout << "Pose theta = " << robot_pose.theta << " Target theta = " << target_pose.theta << std::endl;
+
     return robot_vel;
+
 }
 
 Robot::Pose_t Robot::Global_to_Local_Vel(Pose_t robot_pose, Pose_t global_vel)
@@ -427,8 +430,6 @@ Robot::Pose_t Robot::Global_to_Local_Vel(Pose_t robot_pose, Pose_t global_vel)
 
     local_vel.x = global_vel.x * sin(robot_pose.theta) - global_vel.y * cos(robot_pose.theta);
     local_vel.y = global_vel.x * cos(robot_pose.theta) + global_vel.y * sin(robot_pose.theta);
-    // local_vel.y = 0;
-
     local_vel.theta = global_vel.theta;
 
     return local_vel;

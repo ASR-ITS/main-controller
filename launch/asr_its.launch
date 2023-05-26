@@ -23,6 +23,6 @@
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find main_controller)/config/amcl.rviz"/>
 
     <!-- Run Path Planning -->
-    <node name="astar_node" pkg="path_planner" type="path_planner.py"/>
+    <node name="astar_node" pkg="path_planner" type="path_planner.py" output="screen"/>
     
 </launch>

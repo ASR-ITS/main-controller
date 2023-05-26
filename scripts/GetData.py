@@ -8,9 +8,11 @@ from std_msgs.msg import String
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import LaserScan
 
 data_odom = (0, 0, 0)
 data_amcl = (0, 0, 0)
+data_laser = (0)
 
 def AMCLCallback(data):
     global data_amcl 
@@ -36,6 +38,10 @@ def OdomCallback(data):
     pose_theta = transformations.euler_from_quaternion(quaternion)[2]
     data_odom = (pose_x, pose_y, pose_theta)
 
+def LaserCallback(data):
+    global data_laser
+    data_laser = data.ranges[0]
+
 # Kalau Mau Nambah Data Bikin Function
 # def fungsiCallback():
 #     global variabel
@@ -51,16 +57,19 @@ def listener():
     time_start = rospy.Time.now().to_sec()
     rospy.Subscriber("/odom", Odometry, OdomCallback)
     rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, AMCLCallback)
+    rospy.Subscriber("/scan", LaserScan, LaserCallback)
     data = pd.DataFrame({"Time":[0],
                          "AMCL":[(0, 0, 0)],
-                         "Odom":[(0, 0, 0)]})       # Tambah satu data lagi "Variabel:[(..., ..., ..., ..., ...)]"
+                         "Odom":[(0, 0, 0)],
+                         "Laser": [0]})       # Tambah satu data lagi "Variabel:[(..., ..., ..., ..., ...)]"
     
     try:
         while not rospy.is_shutdown():
             time_now = rospy.Time.now().to_sec() - time_start
             new_data = {"Time": time_now,
                         "AMCL": data_amcl,
-                        "Odom" : data_odom}         # Tambah satu data "Variabel: data_variabel"
+                        "Odom" : data_odom,
+                        "Laser": data_laser}         # Tambah satu data "Variabel: data_variabel"
             
             data.loc[len(data)] = new_data
             time.sleep(0.1)
