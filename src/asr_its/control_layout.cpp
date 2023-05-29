@@ -374,7 +374,7 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset)
     // {
     //     target_pose.x = path.x.front();
     //     target_pose.y = path.y.front();
-    //     target_pose.theta = path.theta.front()/* - 90 * (MATH_PI/180)*/;
+    //     target_pose.theta = path.theta.front() - 180 * (MATH_PI/180);
     // }
 
     // return target_pose;
@@ -488,7 +488,7 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
     Eigen::MatrixXd Q(3, 3);
     Q << 10, 0, 0,
          0, 10, 0,
-         0, 0, 10;
+         0, 0, 5;
 
     Eigen::MatrixXd R(3, 3);
     R << 1, 0, 0,

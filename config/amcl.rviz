@@ -98,7 +98,7 @@ Visualization Manager:
       Axes Radius: 0.009999999776482582
       Class: rviz/PoseArray
       Color: 255; 25; 0
-      Enabled: false
+      Enabled: true
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
       Name: AMCL Particle
@@ -108,7 +108,7 @@ Visualization Manager:
       Shape: Arrow (Flat)
       Topic: /particlecloud
       Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -246,10 +246,26 @@ Visualization Manager:
       Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /velocity_obstacle/unsuitable_vel
+      Marker Topic: /velocity_obstacle/unsuitable_vel_marker
       Name: UnsuitableVelocities
       Namespaces:
-        unsuitable_vel: true
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /velocity_obstacle/suitable_vel_marker
+      Name: SuitableVelocities
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /velocity_obstacle/desired_vel_marker
+      Name: DesiredVel
+      Namespaces:
+        desired_vel: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -280,7 +296,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.885422468185425
+      Distance: 4.71286153793335
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -288,17 +304,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.3641464710235596
-        Y: 0.5115569233894348
-        Z: 0.36147570610046387
+        X: 0.6009775996208191
+        Y: -0.2185458093881607
+        Z: -0.4131650924682617
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.3397969007492065
+      Pitch: 1.314796805381775
       Target Frame: <Fixed Frame>
-      Yaw: 2.880398988723755
+      Yaw: 3.0803985595703125
     Saved: ~
 Window Geometry:
   Displays:
