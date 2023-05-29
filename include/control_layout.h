@@ -31,6 +31,8 @@
 #include "stdio.h"
 #include "stdlib.h"
 
+#include <Eigen/Dense>
+
 #define MATH_PI 3.1415926535897932384626433832795
 
 class Robot
@@ -122,6 +124,7 @@ private:
     void ClearPath                (Path_t &path);
     Pose_t PurePursuit            (Pose_t robotPose, Path_t &path, float offset);
     Pose_t PointToPointPID        (Pose_t robotPose, Pose_t targetPose, float maxSpeed);
+    Pose_t PointToPointLQR        (Pose_t robotPose, Pose_t targetPose, float maxSpeed);
     Pose_t Global_to_Local_Vel    (Pose_t robot_pose, Pose_t global_vel);
 
     void Joy_Callback             (const sensor_msgs::Joy::ConstPtr &joy_msg);

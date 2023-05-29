@@ -13,7 +13,7 @@ Comhardware::Comhardware(): RosRate(100) //20
         printf("Port Open\n");
 
         OdomPub = Nh.advertise<nav_msgs::Odometry>("odom", 50);
-        // VelPub  = Nh.advertise<geometry_msgs::Twist>("cmd_vel, 50");
+        VelPub  = Nh.advertise<geometry_msgs::Twist>("cmd_vel", 50);
         SpeedSub = Nh.subscribe("robot/cmd_vel", 10, &Comhardware::SpeedSubCallback, this);
 
         ThreadSerialTransmit = Nh.createTimer(ros::Duration(0.01), &Comhardware::SerialTransmitEvent, this);
@@ -153,11 +153,11 @@ void Comhardware::SerialReceiveEvent(const ros::TimerEvent &event)
             OdomPub.publish(Odom);
             
 
-            // RobotVel.linear.x = VelocityFilter[0];
-            // RobotVel.linear.y = VelocityFilter[1];
-            // RobotVel.angular.z = VelocityFilter[2];
+            RobotVel.linear.x = VelocityFilter[0];
+            RobotVel.linear.y = VelocityFilter[1];
+            RobotVel.angular.z = VelocityFilter[2];
 
-            // VelPub.publish(RobotVel);
+            VelPub.publish(RobotVel);
         }
         if (DataLen == 4 && sLocal[0].length() > 6)
         {

@@ -121,12 +121,14 @@ Robot::Robot(): RosRate(100)
                 }
 
                 // Pure Pursuit PID
-                pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 45);
+                pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 30);
+                // LQR PID
+                // pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 20);
 
                 // Push Pure Pursuit Velocity to Publisher Messages
-                pure_pursuit_msg.linear.x  = pure_pursuit_vel.x;
-                pure_pursuit_msg.linear.y  = pure_pursuit_vel.y;
-                pure_pursuit_msg.angular.z = pure_pursuit_vel.theta;
+                pure_pursuit_msg.linear.x  = (int) pure_pursuit_vel.x;
+                pure_pursuit_msg.linear.y  = (int) pure_pursuit_vel.y;
+                pure_pursuit_msg.angular.z = (int) pure_pursuit_vel.theta;
 
                 // Convert Pure Pursuit Velocity to Local Velocity
                 local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel);
@@ -142,9 +144,9 @@ Robot::Robot(): RosRate(100)
                     MsgJoyLED_G.intensity = 1.0;
                     MsgJoyLED_B.intensity = 1.0;
 
-                    robot_vel[0] = obstacle_avoider_vel.x;
-                    robot_vel[1] = obstacle_avoider_vel.y;
-                    robot_vel[2] = obstacle_avoider_vel.theta;
+                    robot_vel[1] = obstacle_avoider_vel.x;
+                    robot_vel[0] = -obstacle_avoider_vel.y;
+                    robot_vel[2] = local_vel.theta;
                 }
             }
 
@@ -176,8 +178,8 @@ Robot::Robot(): RosRate(100)
                 MsgJoyLED_B.intensity = 0.13;
 
                 // Set Robot Speed from Joy Axis
-                robot_vel[0] = -1 * Controller.Axis[0] * 45;
-                robot_vel[1] = Controller.Axis[1] * 45;
+                robot_vel[0] = -1 * Controller.Axis[0] * 30;
+                robot_vel[1] = Controller.Axis[1] * 30;
                 robot_vel[2] = Controller.Axis[2] * 15;
             }
 
@@ -314,37 +316,68 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset)
     target_pose = robot_pose;
 
     float distance = 0;
-    static float epsilon = 0.1;
+    float dx, dy, dot_product;
     int pathLeft = path.x.size();
+
+    // Collision Avoidance Mode
+    while(pathLeft > 1)
+    {
+        // Check for lookahead point
+        target_pose.x = path.x.front();
+        target_pose.y = path.y.front();
+        target_pose.theta = path.theta.front();
+        distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
+
+        // Check if the path point is behind the vehicle
+        dx = target_pose.x - robot_pose.x;
+        dy = target_pose.y - robot_pose.y;
+        dot_product = dx * cos(robot_pose.theta) + dy * sin(robot_pose.theta);
+
+        if(distance >= offset && dot_product > 0)
+        {
+            return target_pose;
+        }
+        else
+        {
+            path.x.pop(); path.y.pop(); path.theta.pop();
+        }
+    }
 
     target_pose.x = path.x.front();
     target_pose.y = path.y.front();
     target_pose.theta = path.theta.front();
-    distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
-    
-    if(pathLeft > 1)
-    {    
-        while(distance < offset)
-        {
-            path.x.pop(); target_pose.x = path.x.front();
-            path.y.pop(); target_pose.y = path.y.front();  
-            path.theta.pop(); target_pose.theta = path.theta.front();
-            if(path.x.size() <= 1)
-                break;
-            distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
-        }
-    }
-    else
-    {
-        target_pose.x = path.x.front();
-        target_pose.y = path.y.front();
-        target_pose.theta = path.theta.front()/* - 90 * (MATH_PI/180)*/;
-    }
 
-    // Debug
-    // std::cout << "path left = " << pathLeft << std::endl;
+    // if dot_product < 0:
+    //     continue
 
     return target_pose;
+
+    // // Normal Mode
+    // target_pose.x = path.x.front();
+    // target_pose.y = path.y.front();
+    // target_pose.theta = path.theta.front();
+    // distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
+    
+    // if(pathLeft > 1)
+    // {    
+    //     while(distance < offset)
+    //     {
+    //         path.x.pop(); target_pose.x = path.x.front();
+    //         path.y.pop(); target_pose.y = path.y.front();  
+    //         path.theta.pop(); target_pose.theta = path.theta.front();
+    //         if(path.x.size() <= 1)
+    //             break;
+    //         distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
+    //     }
+    // }
+    // else
+    // {
+    //     target_pose.x = path.x.front();
+    //     target_pose.y = path.y.front();
+    //     target_pose.theta = path.theta.front()/* - 90 * (MATH_PI/180)*/;
+    // }
+
+    // return target_pose;
 }
 
 Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, float maxSpeed)
@@ -362,9 +395,9 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
     static float prevError[3] = {0, 0, 0};
     static float sumError[3] = {0, 0, 0};
 
-    float kp[3] = {225, 225, 20};
+    float kp[3] = {300, 300, 10};
     float ki[3] = {0, 0, 0};
-    float kd[3] = {25, 25, 0};
+    float kd[3] = {30, 30, 2};
 
     error[0] = target_pose.x - robot_pose.x;
     error[1] = target_pose.y - robot_pose.y;
@@ -391,19 +424,6 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
         output[i] = proportional[i] + integral[i] + derivative[i];
     }
 
-    // // Speed Limiter and Normalizer
-    // if(abs(output[0]) >= maxSpeed || abs(output[1]) >= maxSpeed || abs(output[2]) >= maxSpeed){
-    //     float max = 0;
-    //     for(int i=0 ; i<=2 ; i++){
-    //         if(abs(output[i]) > max){
-    //             max = abs(output[i]);
-    //         }
-    //     }
-    //     for(int i=0 ; i<=2 ; i++){
-    //         output[i] = output[i] * (maxSpeed / max);
-    //     }
-    // }
-
     // Speed Limiter Only
     for(int i=0 ; i<=2 ; i++){
         if(output[i] >= maxSpeed){
@@ -419,6 +439,118 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
     robot_vel.theta = output[2];
 
     std::cout << "Pose theta = " << robot_pose.theta << " Target theta = " << target_pose.theta << std::endl;
+
+    return robot_vel;
+
+}
+
+Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, float maxSpeed)
+{
+    const int maxIterations = 100;
+    const double convergenceThreshold = 1e-6;
+
+    float error[3] = {0, 0, 0};
+    float output[3] = {0, 0, 0};
+    float dt = 1;
+
+    Pose_t robot_vel;
+    robot_vel.x = robot_vel.y = robot_vel.theta = 0;
+
+
+    error[0] = target_pose.x - robot_pose.x;
+    error[1] = target_pose.y - robot_pose.y;
+    error[2] = target_pose.theta - robot_pose.theta;
+
+    // Nearest Angle
+    if(abs(error[2]) >= MATH_PI){
+        if(error[2] > 0){
+            error[2] = error[2] - 2*MATH_PI;
+        }
+        else{
+            error[2] = error[2] + 2*MATH_PI;
+        }
+    }
+
+    // Define the system dynamics matrices A, B
+    Eigen::MatrixXd A(3, 3);
+    A << 10, 0, 0,
+         0, 10, 0,
+         0, 0, 10;
+
+    Eigen::MatrixXd B(3, 3);
+    B << -cos(robot_pose.theta)*dt,  sin(robot_pose.theta)*dt,    0,
+         -sin(robot_pose.theta)*dt, -cos(robot_pose.theta)*dt,    0,
+                                 0,                         0, 1*dt;
+
+    // Define the Q and R matrices
+    // unchecked P2P diag(10, 10, 10)
+    // unchecked PTrack diag(150, 150, 150)
+    Eigen::MatrixXd Q(3, 3);
+    Q << 10, 0, 0,
+         0, 10, 0,
+         0, 0, 10;
+
+    Eigen::MatrixXd R(3, 3);
+    R << 1, 0, 0,
+         0, 1, 0,
+         0, 0, 1;
+
+    // Solve the Algebraic Riccati Equation
+    Eigen::MatrixXd P = Q;
+
+    // Perform the iterative computation
+    for (int i = 0; i < maxIterations; ++i) {
+        Eigen::MatrixXd P_prev = P;
+        P = A.transpose() * P * A - A.transpose() * P * B * (R + B.transpose() * P * B).inverse() * B.transpose() * P * A + Q;
+        std::cout << P << std::endl;
+
+        // Check for convergence
+        double normDiff = (P - P_prev).norm();
+        if (normDiff < convergenceThreshold) {
+            std::cout << "Convergence achieved after " << i+1 << " iterations." << std::endl;
+            break;
+        }
+    }
+
+    // Calculate the gain matrix K
+    // Eigen::MatrixXd K = (R + B.transpose() * P * B).inverse() * B.transpose() * P * A;
+    Eigen::MatrixXd K = R.inverse() * B.transpose() * P;
+
+    // Display the optimal control gain matrix K
+    std::cout << "Optimal control gain matrix K:" << std::endl;
+    std::cout << K << std::endl;
+
+    Eigen::Vector3d Error(error[0], error[1], error[2]);
+    Eigen::Vector3d U = -K * Error;
+
+    std::cout << "error E " << std::endl;
+    std::cout << Error << std::endl;
+
+    // Extract individual control inputs
+    output[0] = U[0];
+    output[1] = U[1];
+    output[2] = U[2];
+
+    // Speed Limiter Only
+    for(int i=0 ; i<=2 ; i++){
+        if(output[i] >= maxSpeed){
+            output[i] = maxSpeed;
+        }
+        else if(output[i] <= -maxSpeed){
+            output[i] = -maxSpeed;
+        }
+    }
+
+    robot_vel.x = output[0];
+    robot_vel.y = output[1];
+    robot_vel.theta = output[2];
+
+
+    // Display the control inputs
+    std::cout << "Control inputs:" << std::endl;
+    std::cout << "robot_vel.x: " << robot_vel.x << std::endl;
+    std::cout << "robot_vel.y: " << robot_vel.y << std::endl;
+    std::cout << "robot_vel.z: " << robot_vel.theta << std::endl;
 
     return robot_vel;
 

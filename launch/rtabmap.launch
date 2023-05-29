@@ -65,16 +65,52 @@
             <param name="RGBD/AngularUpdate"        type="string" value="0.05"/>
             <param name="RGBD/LinearUpdate"         type="string" value="0.05"/>
             <param name="RGBD/OptimizeFromGraphEnd" type="string" value="true"/>
-            <param name="Grid/FromDepth"            type="string" value="false"/> <!-- occupancy grid from lidar -->
+            <param name="RGBD/CreateOccupancyGrid"  type="string" value="true"/>
+            <param name="Grid/Sensor"               type="string" value="2"/> <!-- occupancy grid from lidar -->
             <param name="Reg/Force3DoF"             type="string" value="true"/>
+
             <param name="Reg/Strategy"              type="string" value="2"/> <!-- 1=ICP -->
             <param name="Mem/IncrementalMemory"     type="string" value="true"/>
             <param name="Mem/InitWMWithAllNodes"    type="string" value="true"/>
             <!-- ICP parameters -->
             <param name="Icp/VoxelSize"                 type="string" value="0.05"/>
             <param name="Icp/MaxCorrespondenceDistance" type="string" value="0.1"/>
+            <param name="Icp/RangeMax"                  type="string" value="10.5"/>
+            <param name="Icp/RangeMin"                  type="string" value="0.5"/>
 
+            <!-- 2D map parameter-->
+            <param name="Grid/3D"                   type="string" value="false"/>
+            <!-- <param name="Grid/FootprintHeight"      type="string" value="0.1"/>
+            <param name="Grid/FootprintLength"      type="string" value="0.1"/>
+            <param name="Grid/FootprintWidth"       type="string" value="0.1"/> -->
+
+            <param name="Grid/RangeMax"             type="string" value="10.5"/>
+            <param name="Grid/RangeMIn"             type="string" value="0.5"/>
+
+            <param name="Grid/MaxGroundAngle"         type="string" value="30"/>
+            <param name="Grid/NoiseFilteringRadius"   type="string" value="5"/>
+
+            <param name="Vis/FeatureType"           type="string" value="1"/>
+            <param name="Vis/MaxDepth"              type="string" value="10"/>
+            <param name="Vis/CorType"               type="string" value="1"/>
+            <param name="Vis/RoiRatios"              type="string" value="0 0 0.3 0.3"/>
+
+            <param name="SURF/HessianThreshold"      type="string" value="60"/>
+
+            <param name="Optimizer/Robust"          type="string"  value="true"/>
+        
+
+            <param name="Kp/MaxDepth"               type="string" value="10"/>
+            <param name="Kp/DetectorStrategy"       type="string" value="1"/> <!-- 0=SIFt 1=Surf-->
+            <param name="Kp/RoiRatios"              type="string" value="0 0 0.3 0.3"/>
+            
+
+
+
+    
             <!-- <param name="Rtabmap/StartNewMapOnLoopClosure" value="true"/> -->
+
+            
         </node>
 
     </group>

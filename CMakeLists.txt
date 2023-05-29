@@ -123,9 +123,13 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
+
+set(EIGEN_INCLUDE_DIR "/home/asr-its/cpp_library/eigen")
+
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
@@ -169,7 +173,7 @@ add_executable(robot_comhardware_node src/robot_comhardware.cpp)
 target_link_libraries(main_node ${catkin_LIBRARIES})
 target_link_libraries(comhardware_node rs232 ${catkin_LIBRARIES})
 target_link_libraries(tf_broadcaster_node ${catkin_LIBRARIES})
-target_link_libraries(robot_node robot ${catkin_LIBRARIES})
+target_link_libraries(robot_node robot ${catkin_LIBRARIES} ${EIGEN_INCLUDE_DIR})
 target_link_libraries(robot_comhardware_node robot_comhardware rs232 ${catkin_LIBRARIES})
 
 #############
