@@ -30,5 +30,8 @@
 
     <!-- Run Path Planning -->
     <node name="astar_node" pkg="path_planner" type="path_planner.py" output="screen"/>
+
+    <!-- Run Data Logger-->
+    <!-- <include file="$(find data_logger)/launch/data_logger.launch"/> -->
     
 </launch>

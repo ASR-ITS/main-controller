@@ -87,18 +87,18 @@ Robot::Robot(): RosRate(100)
         Controller.prev_button[OPTIONS] = Controller.Buttons[OPTIONS];
 
         // Set RTH Mode Using SHARE Button
-        if (Controller.Buttons[SHARE] == 0 && Controller.prev_button[SHARE] == 1)
+        if (Controller.Buttons[SHARE] == 1 && Controller.prev_button[SHARE] == 0)
         {
             // Set Robot Mode to RTH
-            RTHMode = 1;
-            GuidedMode = 0;
+            // RTHMode = 1;
+            // GuidedMode = 0;
 
             // Clear Current Path
             ClearPath(path);
 
             // Add Header Goal Message
             origin_msg.header.stamp = ros::Time::now();
-            origin_msg.header.frame_id = "map"
+            origin_msg.header.frame_id = "map";
 
             // Set Goal to Origin Position
             origin_msg.pose.position.x = 0.0;
@@ -133,18 +133,18 @@ Robot::Robot(): RosRate(100)
         {
             // DEBUG
             ClearPath(path);
-            ROS.INFO("Robot stopped because path is closed. Recalculating path... ");
+            ROS_INFO("Robot stopped because path is closed. Recalculating path... ");
         }
         prev_crashed = crashed_status;
 
         // Go to Autonomous Mode
-        if (GuidedMode || RTHMode)
+        if (GuidedMode)
         {
             // Go to AUTONOMOUS Mode with Indicator
             if (vel_msg.StatusControl)
             {
                 // Set YELLOW Indicator for GUIDED Mode
-                if(GuidedMode && RTHMode != 1)
+                if(GuidedMode == 1)
                 {
                     // Set LED Feedback
                     MsgJoyLED_R.intensity = 0.3;
@@ -152,13 +152,13 @@ Robot::Robot(): RosRate(100)
                     MsgJoyLED_B.intensity = 0.0;
                 }
                 // Set BLUE Indicator for GUIDED Mode
-                if(RTHMode && GuidedMode != 1)
-                {
-                    // Set LED Feedback
-                    MsgJoyLED_R.intensity = 0.0;
-                    MsgJoyLED_G.intensity = 0.0;
-                    MsgJoyLED_B.intensity = 0.5;
-                }
+                // if(RTHMode == 1 && GuidedMode != 1)
+                // {
+                //     // Set LED Feedback
+                //     MsgJoyLED_R.intensity = 0.0;
+                //     MsgJoyLED_G.intensity = 0.0;
+                //     MsgJoyLED_B.intensity = 0.5;
+                // }
 
                 // Prevent going to origin if there's no path
                 if(path.x.size() <= 0)
@@ -168,56 +168,55 @@ Robot::Robot(): RosRate(100)
                 // Search for Closest Node
                 else
                 {
-                    next_pose, path_left = PurePursuit(robot_pose, path, 0.1, obstacle_status);
+                    next_pose = PurePursuit(robot_pose, path, 0.1, obstacle_status);
                 }
 
-                if(path_left <= 1)
+                // if(path_left <= 1)
+                // {
+                //     distance_left = sqrt(pow((next_pose.x - robot_pose.x), 2) + pow((next_pose.y - robot_pose.y), 2));
+                //     if(distance_left <= 0.072)
+                //     {
+
+                //         ClearPath(path);
+                //     }
+                // }
+
+                // else
+                // {
+                // Pure Pursuit PID
+                pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 30);
+                // LQR PID
+                // pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 20);
+
+                // Push Pure Pursuit Velocity to Publisher Messages
+                pure_pursuit_msg.linear.x  = (int) pure_pursuit_vel.x;
+                pure_pursuit_msg.linear.y  = (int) pure_pursuit_vel.y;
+                pure_pursuit_msg.angular.z = (int) pure_pursuit_vel.theta;
+
+                // Convert Pure Pursuit Velocity to Local Velocity
+                local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel);
+
+                robot_vel[0] = local_vel.x;
+                robot_vel[1] = local_vel.y;
+                robot_vel[2] = local_vel.theta;
+
+                local_desired_vel_msg.linear.x = local_vel.x * cos(MATH_PI/2) + local_vel.y * sin(MATH_PI/2);
+                local_desired_vel_msg.linear.y = -1 * local_vel.x * sin(MATH_PI/2) + local_vel.y * cos(MATH_PI/2);
+                local_desired_vel_msg.angular.z = local_vel.theta;
+
+                // Obstacle Avoidance Control with WHITE Indicator
+                if(obstacle_status)
                 {
-                    distance_left = sqrt(pow((next_pose.x - robot_pose.x), 2) + pow((next_pose.y - robot_pose.y), 2));
-                    if(distance_left <= 0.072)
-                    {
-                        StatusControl = 0;
-                        RTHMode = 0;
-                        ClearPath();
-                    }
-                }
+                    // Set LED Feedback
+                    MsgJoyLED_R.intensity = 1.0;
+                    MsgJoyLED_G.intensity = 1.0;
+                    MsgJoyLED_B.intensity = 1.0;
 
-                else
-                {
-                    // Pure Pursuit PID
-                    pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 30);
-                    // LQR PID
-                    // pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 20);
-
-                    // Push Pure Pursuit Velocity to Publisher Messages
-                    pure_pursuit_msg.linear.x  = (int) pure_pursuit_vel.x;
-                    pure_pursuit_msg.linear.y  = (int) pure_pursuit_vel.y;
-                    pure_pursuit_msg.angular.z = (int) pure_pursuit_vel.theta;
-
-                    // Convert Pure Pursuit Velocity to Local Velocity
-                    local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel);
-
-                    robot_vel[0] = local_vel.x;
-                    robot_vel[1] = local_vel.y;
+                    robot_vel[0] = obstacle_avoider_vel.x * cos(MATH_PI/2) - obstacle_avoider_vel.y * sin(MATH_PI/2);
+                    robot_vel[1] = obstacle_avoider_vel.x * sin(MATH_PI/2) + obstacle_avoider_vel.y * cos(MATH_PI/2);
                     robot_vel[2] = local_vel.theta;
-
-                    local_desired_vel_msg.linear.x = local_vel.x * cos(MATH_PI/2) + local_vel.y * sin(MATH_PI/2);
-                    local_desired_vel_msg.linear.y = -1 * local_vel.x * sin(MATH_PI/2) + local_vel.y * cos(MATH_PI/2);
-                    local_desired_vel_msg.angular.z = local_vel.theta;
-
-                    // Obstacle Avoidance Control with WHITE Indicator
-                    if(obstacle_status)
-                    {
-                        // Set LED Feedback
-                        MsgJoyLED_R.intensity = 1.0;
-                        MsgJoyLED_G.intensity = 1.0;
-                        MsgJoyLED_B.intensity = 1.0;
-
-                        robot_vel[0] = obstacle_avoider_vel.x * cos(MATH_PI/2) - obstacle_avoider_vel.y * sin(MATH_PI/2);
-                        robot_vel[1] = obstacle_avoider_vel.x * sin(MATH_PI/2) + obstacle_avoider_vel.y * cos(MATH_PI/2);
-                        robot_vel[2] = local_vel.theta;
-                    }
                 }
+                // }
             }
 
             // Pause AUTONOMOUS Mode with RED Indicator
@@ -381,7 +380,8 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, 
     Pose_t target_pose;
     target_pose = robot_pose;
 
-    float distance = 0;
+    float distance = 0.0;
+    float theta_error = 0.0;
     float dx, dy, dot_product;
     int pathLeft = path.x.size();
 
@@ -410,10 +410,35 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, 
                 path.x.pop(); path.y.pop(); path.theta.pop();
             }
         }
-
+        // If Path Left is 1
         target_pose.x = path.x.front();
         target_pose.y = path.y.front();
         target_pose.theta = path.theta.front();
+
+        // Check Distance and Theta Error for Last Target Point
+        distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
+        theta_error = target_pose.theta - robot_pose.theta;
+        
+        if(abs(theta_error) >= MATH_PI)
+        {
+            if(theta_error > 0)
+            {
+                theta_error = theta_error - 2*MATH_PI;
+            }
+            else
+            {
+                theta_error = theta_error + 2*MATH_PI;
+            }
+        }
+
+        if(distance <= 0.033 && theta_error <= MATH_PI/36 && theta_error >= -MATH_PI/36)
+        {
+            // Stop the Robot and Clear Path
+            path.x.pop(); target_pose.x = robot_pose.x;
+            path.y.pop(); target_pose.y = robot_pose.y;
+            path.theta.pop(); target_pose.theta = robot_pose.theta;
+            ROS_INFO("Path Finished!");
+        }
     }
 
     // Normal Mode
@@ -441,10 +466,35 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, 
             target_pose.x = path.x.front();
             target_pose.y = path.y.front();
             target_pose.theta = path.theta.front()/* - 180 * (MATH_PI/180)*/;
+
+            // Check Distance and Theta Error for Last Target Point
+            distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
+            theta_error = target_pose.theta - robot_pose.theta;
+            
+            if(abs(theta_error) >= MATH_PI)
+            {
+                if(theta_error > 0)
+                {
+                    theta_error = theta_error - 2*MATH_PI;
+                }
+                else
+                {
+                    theta_error = theta_error + 2*MATH_PI;
+                }
+            }
+
+            if(distance <= 0.033 && theta_error <= MATH_PI/36 && theta_error >= -MATH_PI/36)
+            {
+            // Stop the Robot and Clear Path
+            path.x.pop(); target_pose.x = robot_pose.x;
+            path.y.pop(); target_pose.y = robot_pose.y;
+            path.theta.pop(); target_pose.theta = robot_pose.theta;
+            ROS_INFO("Path Finished!");
+            }
         }
     }
 
-    return target_pose, pathLeft;
+    return target_pose;
 }
 
 Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, float maxSpeed)
@@ -464,7 +514,7 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
 
     float kp[3] = {300, 300, 15};
     float ki[3] = {0, 0, 0};
-    float kd[3] = {105, 105, 3};
+    float kd[3] = {160, 160, 7};
 
     error[0] = target_pose.x - robot_pose.x;
     error[1] = target_pose.y - robot_pose.y;
@@ -492,20 +542,26 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
     }
 
     // Speed Limiter Only
-    for(int i=0 ; i<=2 ; i++){
+    for(int i=0 ; i<=1 ; i++){
         if(output[i] >= maxSpeed){
             output[i] = maxSpeed;
         }
         else if(output[i] <= -maxSpeed){
             output[i] = -maxSpeed;
         }
+    if(output[2] >= 20){
+        output[2] = 20;
+    }
+    else if(output[2] <= -20){
+        output[2] = -20;
+    }
     }
 
     robot_vel.x = output[0];
     robot_vel.y = output[1];
     robot_vel.theta = output[2];
 
-    std::cout << "Pose theta = " << robot_pose.theta << " Target theta = " << target_pose.theta << std::endl;
+    // std::cout << "Pose theta = " << robot_pose.theta << " Target theta = " << target_pose.theta << std::endl;
 
     return robot_vel;
 
