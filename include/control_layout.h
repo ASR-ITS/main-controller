@@ -109,6 +109,7 @@ private:
     ros::Publisher      Pub_Vel;
     ros::Publisher      Pub_Joy_Feedback;
     ros::Publisher      Pub_Pure_Pursuit;
+    ros::Publisher      Pub_Local_Desired_Vel;
     ros::Rate           RosRate;
     ros::Time           prev_time;
 
@@ -118,11 +119,12 @@ private:
     sensor_msgs::JoyFeedback        MsgJoyRumble;
     sensor_msgs::JoyFeedbackArray   MsgJoyFeedbackArray;
     geometry_msgs::Twist            pure_pursuit_msg; 
+    geometry_msgs::Twist            local_desired_vel_msg;
 
     main_controller::ControllerData         vel_msg;
 
     void ClearPath                (Path_t &path);
-    Pose_t PurePursuit            (Pose_t robotPose, Path_t &path, float offset);
+    Pose_t PurePursuit            (Pose_t robotPose, Path_t &path, float offset, bool obstacle);
     Pose_t PointToPointPID        (Pose_t robotPose, Pose_t targetPose, float maxSpeed);
     Pose_t PointToPointLQR        (Pose_t robotPose, Pose_t targetPose, float maxSpeed);
     Pose_t Global_to_Local_Vel    (Pose_t robot_pose, Pose_t global_vel);

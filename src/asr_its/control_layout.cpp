@@ -15,11 +15,12 @@ Robot::Robot(): RosRate(100)
 
     Sub_Crashed        = Nh.subscribe("/crashed", 10, &Robot::Crashed_Status_Callback, this);
     Sub_Obstacle       = Nh.subscribe("/obstacle_detected", 10, &Robot::Obstacle_Status_Callback, this);
-    Sub_Obs_Vel        = Nh.subscribe("/obs_vel", 10, &Robot::Obstacle_Vel_Callback, this);
+    Sub_Obs_Vel        = Nh.subscribe("/velocity_obstacle/opt_vel", 10, &Robot::Obstacle_Vel_Callback, this);
 
     Pub_Vel            = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
     Pub_Joy_Feedback   = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
     Pub_Pure_Pursuit   = Nh.advertise<geometry_msgs::Twist>("/pure_pursuit_vel", 10);
+    Pub_Local_Desired_Vel = Nh.advertise<geometry_msgs::Twist>("/main_controller/local_desired_vel", 10);
 
     // Initialize Speed Variable
     for (int i = 0; i <=2 ; i++)
@@ -70,7 +71,7 @@ Robot::Robot(): RosRate(100)
 
         // Print Robot Speed (DEBUG)
         // std::cout << "x : " << robot_vel[0] << " y : " << robot_vel[1] << " Theta : " << robot_vel[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
-        // std::cout << "pose theta : " << robot_pose.theta*(180/MATH_PI) << std::endl;
+        std::cout << "pose= x: " << robot_pose.x << " y: " << robot_pose.y << " theta: " << robot_pose.theta*(180/MATH_PI) << std::endl;
         // Set Mode Using OPTIONS Button
         if (Controller.Buttons[OPTIONS] == 0 && Controller.prev_button[OPTIONS] == 1)
         {
@@ -101,6 +102,7 @@ Robot::Robot(): RosRate(100)
         // Go to Autonomous Mode
         if (GuidedMode)
         {
+            ROS_INFO("GUIDED MODE");
             // Go to AUTONOMOUS Mode with YELLOW Indicator
             if (vel_msg.StatusControl)
             {
@@ -117,7 +119,7 @@ Robot::Robot(): RosRate(100)
                 // Search for Closest Node
                 else
                 {
-                    next_pose = PurePursuit(robot_pose, path, 0.1);
+                    next_pose = PurePursuit(robot_pose, path, 0.1, obstacle_status);
                 }
 
                 // Pure Pursuit PID
@@ -132,9 +134,14 @@ Robot::Robot(): RosRate(100)
 
                 // Convert Pure Pursuit Velocity to Local Velocity
                 local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel);
+
                 robot_vel[0] = local_vel.x;
                 robot_vel[1] = local_vel.y;
                 robot_vel[2] = local_vel.theta;
+
+                local_desired_vel_msg.linear.x = local_vel.x * cos(MATH_PI/2) + local_vel.y * sin(MATH_PI/2);
+                local_desired_vel_msg.linear.y = -1 * local_vel.x * sin(MATH_PI/2) + local_vel.y * cos(MATH_PI/2);
+                local_desired_vel_msg.angular.z = local_vel.theta;
 
                 // Obstacle Avoidance Control with WHITE Indicator
                 if(obstacle_status)
@@ -144,8 +151,8 @@ Robot::Robot(): RosRate(100)
                     MsgJoyLED_G.intensity = 1.0;
                     MsgJoyLED_B.intensity = 1.0;
 
-                    robot_vel[1] = obstacle_avoider_vel.x;
-                    robot_vel[0] = -obstacle_avoider_vel.y;
+                    robot_vel[0] = obstacle_avoider_vel.x * cos(MATH_PI/2) - obstacle_avoider_vel.y * sin(MATH_PI/2);
+                    robot_vel[1] = obstacle_avoider_vel.x * sin(MATH_PI/2) + obstacle_avoider_vel.y * cos(MATH_PI/2);
                     robot_vel[2] = local_vel.theta;
                 }
             }
@@ -214,6 +221,7 @@ Robot::Robot(): RosRate(100)
         Pub_Vel.publish(vel_msg);
         Pub_Pure_Pursuit.publish(pure_pursuit_msg);
         Pub_Joy_Feedback.publish(MsgJoyFeedbackArray);
+        Pub_Local_Desired_Vel.publish(local_desired_vel_msg);
 
         ros::spinOnce(); 
         RosRate.sleep();
@@ -309,7 +317,7 @@ void Robot::ClearPath(Path_t &path)
     }
 }
 
-Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset)
+Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, bool obstacle)
 {
 
     Pose_t target_pose;
@@ -319,65 +327,66 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset)
     float dx, dy, dot_product;
     int pathLeft = path.x.size();
 
-    // Collision Avoidance Mode
-    while(pathLeft > 1)
+    // // Collision Avoidance Mode
+    if(obstacle)
     {
-        // Check for lookahead point
+        while(pathLeft > 1)
+        {
+            // Check for lookahead point
+            target_pose.x = path.x.front();
+            target_pose.y = path.y.front();
+            target_pose.theta = path.theta.front();
+            distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
+
+            // Check if the path point is behind the vehicle
+            dx = target_pose.x - robot_pose.x;
+            dy = target_pose.y - robot_pose.y;
+            dot_product = dx * cos(robot_pose.theta) + dy * sin(robot_pose.theta);
+
+            if(distance >= offset && dot_product > 0)
+            {
+                return target_pose;
+            }
+            else
+            {
+                path.x.pop(); path.y.pop(); path.theta.pop();
+            }
+        }
+
+        target_pose.x = path.x.front();
+        target_pose.y = path.y.front();
+        target_pose.theta = path.theta.front();
+    }
+
+    // Normal Mode
+    else
+    {
         target_pose.x = path.x.front();
         target_pose.y = path.y.front();
         target_pose.theta = path.theta.front();
         distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
-
-        // Check if the path point is behind the vehicle
-        dx = target_pose.x - robot_pose.x;
-        dy = target_pose.y - robot_pose.y;
-        dot_product = dx * cos(robot_pose.theta) + dy * sin(robot_pose.theta);
-
-        if(distance >= offset && dot_product > 0)
-        {
-            return target_pose;
+        
+        if(pathLeft > 1)
+        {    
+            while(distance < offset)
+            {
+                path.x.pop(); target_pose.x = path.x.front();
+                path.y.pop(); target_pose.y = path.y.front();  
+                path.theta.pop(); target_pose.theta = path.theta.front();
+                if(path.x.size() <= 1)
+                    break;
+                distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
+            }
         }
         else
         {
-            path.x.pop(); path.y.pop(); path.theta.pop();
+            target_pose.x = path.x.front();
+            target_pose.y = path.y.front();
+            target_pose.theta = path.theta.front()/* - 180 * (MATH_PI/180)*/;
         }
     }
 
-    target_pose.x = path.x.front();
-    target_pose.y = path.y.front();
-    target_pose.theta = path.theta.front();
-
-    // if dot_product < 0:
-    //     continue
-
     return target_pose;
-
-    // // Normal Mode
-    // target_pose.x = path.x.front();
-    // target_pose.y = path.y.front();
-    // target_pose.theta = path.theta.front();
-    // distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
-    
-    // if(pathLeft > 1)
-    // {    
-    //     while(distance < offset)
-    //     {
-    //         path.x.pop(); target_pose.x = path.x.front();
-    //         path.y.pop(); target_pose.y = path.y.front();  
-    //         path.theta.pop(); target_pose.theta = path.theta.front();
-    //         if(path.x.size() <= 1)
-    //             break;
-    //         distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
-    //     }
-    // }
-    // else
-    // {
-    //     target_pose.x = path.x.front();
-    //     target_pose.y = path.y.front();
-    //     target_pose.theta = path.theta.front() - 180 * (MATH_PI/180);
-    // }
-
-    // return target_pose;
 }
 
 Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, float maxSpeed)
@@ -395,9 +404,9 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
     static float prevError[3] = {0, 0, 0};
     static float sumError[3] = {0, 0, 0};
 
-    float kp[3] = {300, 300, 10};
+    float kp[3] = {300, 300, 15};
     float ki[3] = {0, 0, 0};
-    float kd[3] = {30, 30, 2};
+    float kd[3] = {105, 105, 3};
 
     error[0] = target_pose.x - robot_pose.x;
     error[1] = target_pose.y - robot_pose.y;
@@ -473,9 +482,9 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
 
     // Define the system dynamics matrices A, B
     Eigen::MatrixXd A(3, 3);
-    A << 10, 0, 0,
-         0, 10, 0,
-         0, 0, 10;
+    A << 1, 0, 0,
+         0, 1, 0,
+         0, 0, 1;
 
     Eigen::MatrixXd B(3, 3);
     B << -cos(robot_pose.theta)*dt,  sin(robot_pose.theta)*dt,    0,
@@ -486,9 +495,9 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
     // unchecked P2P diag(10, 10, 10)
     // unchecked PTrack diag(150, 150, 150)
     Eigen::MatrixXd Q(3, 3);
-    Q << 10, 0, 0,
-         0, 10, 0,
-         0, 0, 5;
+    Q << 20, 0, 0,
+         0, 20, 0,
+         0, 0, 10;
 
     Eigen::MatrixXd R(3, 3);
     R << 1, 0, 0,
@@ -502,7 +511,7 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
     for (int i = 0; i < maxIterations; ++i) {
         Eigen::MatrixXd P_prev = P;
         P = A.transpose() * P * A - A.transpose() * P * B * (R + B.transpose() * P * B).inverse() * B.transpose() * P * A + Q;
-        std::cout << P << std::endl;
+        // std::cout << P << std::endl;
 
         // Check for convergence
         double normDiff = (P - P_prev).norm();
@@ -516,15 +525,8 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
     // Eigen::MatrixXd K = (R + B.transpose() * P * B).inverse() * B.transpose() * P * A;
     Eigen::MatrixXd K = R.inverse() * B.transpose() * P;
 
-    // Display the optimal control gain matrix K
-    std::cout << "Optimal control gain matrix K:" << std::endl;
-    std::cout << K << std::endl;
-
     Eigen::Vector3d Error(error[0], error[1], error[2]);
     Eigen::Vector3d U = -K * Error;
-
-    std::cout << "error E " << std::endl;
-    std::cout << Error << std::endl;
 
     // Extract individual control inputs
     output[0] = U[0];
@@ -543,9 +545,15 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
 
     robot_vel.x = output[0];
     robot_vel.y = output[1];
-    robot_vel.theta = output[2];
+    robot_vel.theta = -output[2];
 
-
+    // Display the optimal LQR Parameter
+    std::cout << "Optimal control gain matrix K:" << std::endl;
+    std::cout << K << std::endl;
+    std::cout << "error E " << std::endl;
+    std::cout << Error << std::endl;
+    std::cout << "control U " << std::endl;
+    std::cout << U << std::endl;
     // Display the control inputs
     std::cout << "Control inputs:" << std::endl;
     std::cout << "robot_vel.x: " << robot_vel.x << std::endl;
