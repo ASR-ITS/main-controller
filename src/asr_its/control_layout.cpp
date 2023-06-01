@@ -8,17 +8,17 @@ Robot::Robot(): RosRate(100)
     
     // Subscriber & Publisher
     Sub_Joy            = Nh.subscribe("/joy", 18, &Robot::Joy_Callback, this);
-    Sub_Joy_Battery    = Nh.subscribe("/battery", 10, &Robot::Joy_Battery_Callback, this);
 
     Sub_Path           = Nh.subscribe("/path", 10, &Robot::Path_Callback, this);
     Sub_Pose           = Nh.subscribe("/amcl_pose", 10, &Robot::Pose_Callback, this);
 
-    Sub_Crashed        = Nh.subscribe("/crashed", 10, &Robot::Crashed_Status_Callback, this);
-    Sub_Obstacle       = Nh.subscribe("/obstacle_detected", 10, &Robot::Obstacle_Status_Callback, this);
+    Sub_Crashed        = Nh.subscribe("/crashed", 1, &Robot::Crashed_Status_Callback, this);
+    Sub_Obstacle       = Nh.subscribe("/obstacle_detected", 1, &Robot::Obstacle_Status_Callback, this);
     Sub_Obs_Vel        = Nh.subscribe("/velocity_obstacle/opt_vel", 10, &Robot::Obstacle_Vel_Callback, this);
 
     Pub_Vel            = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
     Pub_Joy_Feedback   = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
+    Pub_Origin         = Nh.advertise<geometry_msgs::PoseStamped>("/goal", 1);
     Pub_Pure_Pursuit   = Nh.advertise<geometry_msgs::Twist>("/pure_pursuit_vel", 10);
     Pub_Local_Desired_Vel = Nh.advertise<geometry_msgs::Twist>("/main_controller/local_desired_vel", 10);
 
@@ -51,9 +51,15 @@ Robot::Robot(): RosRate(100)
     MsgJoyFeedbackArray.array.push_back(MsgJoyRumble);
 
     // Initialize Pure Purusit
+    int path_left;
+    double distance_left;
 
     while(ros::ok())
     {   
+        // Print Robot Speed (DEBUG)
+        // std::cout << "x : " << robot_vel[0] << " y : " << robot_vel[1] << " Theta : " << robot_vel[2] << " Status : " << vel_msg.StatusControl << std::endl;
+        // std::cout << "pose= x: " << robot_pose.x << " y: " << robot_pose.y << " theta: " << robot_pose.theta*(180/MATH_PI) << std::endl;
+
         // Set Status Control using TRIANGLE Button
         if (Controller.Buttons[TRIANGLE] == 0 && Controller.prev_button[TRIANGLE] == 1)
         {
@@ -69,10 +75,7 @@ Robot::Robot(): RosRate(100)
         }
         Controller.prev_button[CIRCLE] = Controller.Buttons[CIRCLE];
 
-        // Print Robot Speed (DEBUG)
-        // std::cout << "x : " << robot_vel[0] << " y : " << robot_vel[1] << " Theta : " << robot_vel[2] << " Status : " << vel_msg.StatusControl << " Joystick Battery : " << JoyBatt*100 << "%" << std::endl;
-        std::cout << "pose= x: " << robot_pose.x << " y: " << robot_pose.y << " theta: " << robot_pose.theta*(180/MATH_PI) << std::endl;
-        // Set Mode Using OPTIONS Button
+        // Set GUIDED/MANUAL Mode Using OPTIONS Button
         if (Controller.Buttons[OPTIONS] == 0 && Controller.prev_button[OPTIONS] == 1)
         {
             GuidedMode ^= 1;
@@ -82,6 +85,41 @@ Robot::Robot(): RosRate(100)
             prev_time = ros::Time::now();
         }
         Controller.prev_button[OPTIONS] = Controller.Buttons[OPTIONS];
+
+        // Set RTH Mode Using SHARE Button
+        if (Controller.Buttons[SHARE] == 0 && Controller.prev_button[SHARE] == 1)
+        {
+            // Set Robot Mode to RTH
+            RTHMode = 1;
+            GuidedMode = 0;
+
+            // Clear Current Path
+            ClearPath(path);
+
+            // Add Header Goal Message
+            origin_msg.header.stamp = ros::Time::now();
+            origin_msg.header.frame_id = "map"
+
+            // Set Goal to Origin Position
+            origin_msg.pose.position.x = 0.0;
+            origin_msg.pose.position.y = 0.0;
+            origin_msg.pose.position.z = 0.0;
+
+            // Set Goal to Zero Degree Orientation
+            origin_msg.pose.orientation.x = 0.0;
+            origin_msg.pose.orientation.y = 0.0;
+            origin_msg.pose.orientation.z = 0.0;
+            origin_msg.pose.orientation.w = 1.0;
+
+            // Publish Goal Message
+            Pub_Origin.publish(origin_msg);
+
+            // Set Rumble Feedback
+            rumble_status = 1;
+            MsgJoyRumble.intensity  = 0.5;
+            prev_time = ros::Time::now();
+        }
+        Controller.prev_button[SHARE] = Controller.Buttons[SHARE];
 
         // Rumble Feedback Event
         if (rumble_status && ros::Time::now() - prev_time >= ros::Duration(0.57))
@@ -95,21 +133,32 @@ Robot::Robot(): RosRate(100)
         {
             // DEBUG
             ClearPath(path);
-            std::cout << "Robot stopped because path is closed. Recalculating path... " << std::endl;
+            ROS.INFO("Robot stopped because path is closed. Recalculating path... ");
         }
         prev_crashed = crashed_status;
 
         // Go to Autonomous Mode
-        if (GuidedMode)
+        if (GuidedMode || RTHMode)
         {
-            ROS_INFO("GUIDED MODE");
-            // Go to AUTONOMOUS Mode with YELLOW Indicator
+            // Go to AUTONOMOUS Mode with Indicator
             if (vel_msg.StatusControl)
             {
-                // Set LED Feedback
-                MsgJoyLED_R.intensity = 0.3;
-                MsgJoyLED_G.intensity = 0.3;
-                MsgJoyLED_B.intensity = 0.0;
+                // Set YELLOW Indicator for GUIDED Mode
+                if(GuidedMode && RTHMode != 1)
+                {
+                    // Set LED Feedback
+                    MsgJoyLED_R.intensity = 0.3;
+                    MsgJoyLED_G.intensity = 0.3;
+                    MsgJoyLED_B.intensity = 0.0;
+                }
+                // Set BLUE Indicator for GUIDED Mode
+                if(RTHMode && GuidedMode != 1)
+                {
+                    // Set LED Feedback
+                    MsgJoyLED_R.intensity = 0.0;
+                    MsgJoyLED_G.intensity = 0.0;
+                    MsgJoyLED_B.intensity = 0.5;
+                }
 
                 // Prevent going to origin if there's no path
                 if(path.x.size() <= 0)
@@ -119,41 +168,55 @@ Robot::Robot(): RosRate(100)
                 // Search for Closest Node
                 else
                 {
-                    next_pose = PurePursuit(robot_pose, path, 0.1, obstacle_status);
+                    next_pose, path_left = PurePursuit(robot_pose, path, 0.1, obstacle_status);
                 }
 
-                // Pure Pursuit PID
-                pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 30);
-                // LQR PID
-                // pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 20);
-
-                // Push Pure Pursuit Velocity to Publisher Messages
-                pure_pursuit_msg.linear.x  = (int) pure_pursuit_vel.x;
-                pure_pursuit_msg.linear.y  = (int) pure_pursuit_vel.y;
-                pure_pursuit_msg.angular.z = (int) pure_pursuit_vel.theta;
-
-                // Convert Pure Pursuit Velocity to Local Velocity
-                local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel);
-
-                robot_vel[0] = local_vel.x;
-                robot_vel[1] = local_vel.y;
-                robot_vel[2] = local_vel.theta;
-
-                local_desired_vel_msg.linear.x = local_vel.x * cos(MATH_PI/2) + local_vel.y * sin(MATH_PI/2);
-                local_desired_vel_msg.linear.y = -1 * local_vel.x * sin(MATH_PI/2) + local_vel.y * cos(MATH_PI/2);
-                local_desired_vel_msg.angular.z = local_vel.theta;
-
-                // Obstacle Avoidance Control with WHITE Indicator
-                if(obstacle_status)
+                if(path_left <= 1)
                 {
-                    // Set LED Feedback
-                    MsgJoyLED_R.intensity = 1.0;
-                    MsgJoyLED_G.intensity = 1.0;
-                    MsgJoyLED_B.intensity = 1.0;
+                    distance_left = sqrt(pow((next_pose.x - robot_pose.x), 2) + pow((next_pose.y - robot_pose.y), 2));
+                    if(distance_left <= 0.072)
+                    {
+                        StatusControl = 0;
+                        RTHMode = 0;
+                        ClearPath();
+                    }
+                }
 
-                    robot_vel[0] = obstacle_avoider_vel.x * cos(MATH_PI/2) - obstacle_avoider_vel.y * sin(MATH_PI/2);
-                    robot_vel[1] = obstacle_avoider_vel.x * sin(MATH_PI/2) + obstacle_avoider_vel.y * cos(MATH_PI/2);
+                else
+                {
+                    // Pure Pursuit PID
+                    pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 30);
+                    // LQR PID
+                    // pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 20);
+
+                    // Push Pure Pursuit Velocity to Publisher Messages
+                    pure_pursuit_msg.linear.x  = (int) pure_pursuit_vel.x;
+                    pure_pursuit_msg.linear.y  = (int) pure_pursuit_vel.y;
+                    pure_pursuit_msg.angular.z = (int) pure_pursuit_vel.theta;
+
+                    // Convert Pure Pursuit Velocity to Local Velocity
+                    local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel);
+
+                    robot_vel[0] = local_vel.x;
+                    robot_vel[1] = local_vel.y;
                     robot_vel[2] = local_vel.theta;
+
+                    local_desired_vel_msg.linear.x = local_vel.x * cos(MATH_PI/2) + local_vel.y * sin(MATH_PI/2);
+                    local_desired_vel_msg.linear.y = -1 * local_vel.x * sin(MATH_PI/2) + local_vel.y * cos(MATH_PI/2);
+                    local_desired_vel_msg.angular.z = local_vel.theta;
+
+                    // Obstacle Avoidance Control with WHITE Indicator
+                    if(obstacle_status)
+                    {
+                        // Set LED Feedback
+                        MsgJoyLED_R.intensity = 1.0;
+                        MsgJoyLED_G.intensity = 1.0;
+                        MsgJoyLED_B.intensity = 1.0;
+
+                        robot_vel[0] = obstacle_avoider_vel.x * cos(MATH_PI/2) - obstacle_avoider_vel.y * sin(MATH_PI/2);
+                        robot_vel[1] = obstacle_avoider_vel.x * sin(MATH_PI/2) + obstacle_avoider_vel.y * cos(MATH_PI/2);
+                        robot_vel[2] = local_vel.theta;
+                    }
                 }
             }
 
@@ -241,11 +304,6 @@ void Robot::Joy_Callback (const sensor_msgs::Joy::ConstPtr &joy_msg)
     {
         Controller.Buttons[i] = joy_msg->buttons[i];
     }
-}
-
-void Robot::Joy_Battery_Callback (const sensor_msgs::BatteryState::ConstPtr &joy_batt_msg)
-{
-    JoyBatt = joy_batt_msg->percentage;
 }
 
 void Robot::Path_Callback (const nav_msgs::Path::ConstPtr &path_msg)
@@ -386,7 +444,7 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, 
         }
     }
 
-    return target_pose;
+    return target_pose, pathLeft;
 }
 
 Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, float maxSpeed)

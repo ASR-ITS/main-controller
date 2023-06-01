@@ -46,6 +46,7 @@ private:
     int     robot_vel[3]       = {0, 0, 0};
     uint8_t StatusControl      = 0;
     uint8_t GuidedMode         = 0;
+    uint8_t RTHMode            = 0;
     bool    obstacle_status;
     float   JoyBatt            = 0.0;
     bool    rumble_status;   
@@ -108,6 +109,7 @@ private:
     
     ros::Publisher      Pub_Vel;
     ros::Publisher      Pub_Joy_Feedback;
+    ros::Publisher      Pub_Origin;
     ros::Publisher      Pub_Pure_Pursuit;
     ros::Publisher      Pub_Local_Desired_Vel;
     ros::Rate           RosRate;
@@ -118,6 +120,7 @@ private:
     sensor_msgs::JoyFeedback        MsgJoyLED_B;
     sensor_msgs::JoyFeedback        MsgJoyRumble;
     sensor_msgs::JoyFeedbackArray   MsgJoyFeedbackArray;
+    geometry_msgs::PoseStamped      origin_msg;
     geometry_msgs::Twist            pure_pursuit_msg; 
     geometry_msgs::Twist            local_desired_vel_msg;
 
@@ -130,7 +133,6 @@ private:
     Pose_t Global_to_Local_Vel    (Pose_t robot_pose, Pose_t global_vel);
 
     void Joy_Callback             (const sensor_msgs::Joy::ConstPtr &joy_msg);
-    void Joy_Battery_Callback     (const sensor_msgs::BatteryState::ConstPtr &joy_batt_msg);
     void Path_Callback            (const nav_msgs::Path::ConstPtr &path_msg);
     void Pose_Callback            (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);
     void Crashed_Status_Callback  (const std_msgs::Bool::ConstPtr &crashed_msg);
