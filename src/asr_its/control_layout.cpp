@@ -184,9 +184,9 @@ Robot::Robot(): RosRate(100)
                 // else
                 // {
                 // Pure Pursuit PID
-                pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 30);
+                // pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 30);
                 // LQR PID
-                // pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 20);
+                pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 30);
 
                 // Push Pure Pursuit Velocity to Publisher Messages
                 pure_pursuit_msg.linear.x  = (int) pure_pursuit_vel.x;
@@ -512,7 +512,7 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
     static float prevError[3] = {0, 0, 0};
     static float sumError[3] = {0, 0, 0};
 
-    float kp[3] = {300, 300, 15};
+    float kp[3] = {300, 300, 20};
     float ki[3] = {0, 0, 0};
     float kd[3] = {160, 160, 7};
 
@@ -552,8 +552,8 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
     if(output[2] >= 20){
         output[2] = 20;
     }
-    else if(output[2] <= -20){
-        output[2] = -20;
+    else if(output[2] <= -15){
+        output[2] = -15;
     }
     }
 
@@ -601,17 +601,17 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
          0, 0, 1;
 
     Eigen::MatrixXd B(3, 3);
-    B << -cos(robot_pose.theta)*dt,  sin(robot_pose.theta)*dt,    0,
-         -sin(robot_pose.theta)*dt, -cos(robot_pose.theta)*dt,    0,
-                                 0,                         0, 1*dt;
+    B << -1*dt,     0,     0,
+             0, -1*dt,     0,
+             0,     0, -1*dt;
 
     // Define the Q and R matrices
-    // unchecked P2P diag(10, 10, 10)
-    // unchecked PTrack diag(150, 150, 150)
+    // P2P Q = diag(30, 30, 10)
+    // unchecked PTrack diag(150, 150, 25)
     Eigen::MatrixXd Q(3, 3);
-    Q << 20, 0, 0,
-         0, 20, 0,
-         0, 0, 10;
+    Q << 225, 0, 0,
+         0, 225, 0,
+         0, 0, 25;
 
     Eigen::MatrixXd R(3, 3);
     R << 1, 0, 0,
@@ -659,7 +659,7 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
 
     robot_vel.x = output[0];
     robot_vel.y = output[1];
-    robot_vel.theta = -output[2];
+    robot_vel.theta = output[2];
 
     // Display the optimal LQR Parameter
     std::cout << "Optimal control gain matrix K:" << std::endl;
