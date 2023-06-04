@@ -46,11 +46,8 @@ private:
     int     robot_vel[3]       = {0, 0, 0};
     uint8_t StatusControl      = 0;
     uint8_t GuidedMode         = 0;
-    uint8_t RTHMode            = 0;
-    bool    obstacle_status;
-    float   JoyBatt            = 0.0;
     bool    rumble_status;   
-    bool    crashed_status, prev_crashed; 
+    bool    obstacle_status, crashed_status, prev_crashed; 
 
     struct DS4_t 
     {
@@ -128,9 +125,9 @@ private:
 
     void ClearPath                (Path_t &path);
     Pose_t PurePursuit            (Pose_t robotPose, Path_t &path, float offset, bool obstacle);
-    Pose_t PointToPointPID        (Pose_t robotPose, Pose_t targetPose, float maxSpeed);
+    Pose_t PointToPointPID        (Pose_t robotPose, Pose_t targetPose);
     Pose_t PointToPointLQR        (Pose_t robotPose, Pose_t targetPose, float maxSpeed);
-    Pose_t Global_to_Local_Vel    (Pose_t robot_pose, Pose_t global_vel);
+    Pose_t Global_to_Local_Vel    (Pose_t robot_pose, Pose_t global_vel, float max_vel);
 
     void Joy_Callback             (const sensor_msgs::Joy::ConstPtr &joy_msg);
     void Path_Callback            (const nav_msgs::Path::ConstPtr &path_msg);

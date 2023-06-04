@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include "control_layout.h"
 
-Robot::Robot(): RosRate(100)
+Robot::Robot(): RosRate(200)
 {
     // Initialize
     ROS_INFO("Robot Main Controller");
@@ -16,10 +16,10 @@ Robot::Robot(): RosRate(100)
     Sub_Obstacle       = Nh.subscribe("/obstacle_detected", 1, &Robot::Obstacle_Status_Callback, this);
     Sub_Obs_Vel        = Nh.subscribe("/velocity_obstacle/opt_vel", 10, &Robot::Obstacle_Vel_Callback, this);
 
-    Pub_Vel            = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
-    Pub_Joy_Feedback   = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
-    Pub_Origin         = Nh.advertise<geometry_msgs::PoseStamped>("/goal", 1);
-    Pub_Pure_Pursuit   = Nh.advertise<geometry_msgs::PoseStamped>("/pure_pursuit_pose", 1);
+    Pub_Vel               = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
+    Pub_Joy_Feedback      = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
+    Pub_Origin            = Nh.advertise<geometry_msgs::PoseStamped>("/goal", 1);
+    Pub_Pure_Pursuit      = Nh.advertise<geometry_msgs::PoseStamped>("/pure_pursuit_pose", 10);
     Pub_Local_Desired_Vel = Nh.advertise<geometry_msgs::Twist>("/main_controller/local_desired_vel", 10);
 
     // Initialize Speed Variable
@@ -89,10 +89,6 @@ Robot::Robot(): RosRate(100)
         // Set RTH Mode Using SHARE Button
         if (Controller.Buttons[SHARE] == 1 && Controller.prev_button[SHARE] == 0)
         {
-            // Set Robot Mode to RTH
-            // RTHMode = 1;
-            // GuidedMode = 0;
-
             // Clear Current Path
             ClearPath(path);
 
@@ -144,72 +140,64 @@ Robot::Robot(): RosRate(100)
             if (vel_msg.StatusControl)
             {
                 // Set YELLOW Indicator for GUIDED Mode
-                if(GuidedMode == 1)
-                {
-                    // Set LED Feedback
-                    MsgJoyLED_R.intensity = 0.3;
-                    MsgJoyLED_G.intensity = 0.3;
-                    MsgJoyLED_B.intensity = 0.0;
-                }
-                // Set BLUE Indicator for GUIDED Mode
-                // if(RTHMode == 1 && GuidedMode != 1)
-                // {
-                //     // Set LED Feedback
-                //     MsgJoyLED_R.intensity = 0.0;
-                //     MsgJoyLED_G.intensity = 0.0;
-                //     MsgJoyLED_B.intensity = 0.5;
-                // }
+                MsgJoyLED_R.intensity = 0.3;
+                MsgJoyLED_G.intensity = 0.3;
+                MsgJoyLED_B.intensity = 0.0;
 
                 // Prevent going to origin if there's no path
                 if(path.x.size() <= 0)
                 {
-                    next_pose = robot_pose;
+                    robot_vel[0] = 0.0;
+                    robot_vel[1] = 0.0;
+                    robot_vel[2] = 0.0;
                 }
-                // Search for Closest Node
+
+                // Search for Closest Node using Pure Pursuit
                 else
                 {
                     next_pose = PurePursuit(robot_pose, path, 0.1, obstacle_status);
-                }
 
-                // Pure Pursuit PID
-                // pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 30);
-                // LQR PID
-                pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 30);
+                    // Push Pure Pursuit Next Target to Publisher Messages
+                    tf2::Quaternion next_theta;
+                    next_theta.setRPY(0, 0, next_pose.theta);
+                    next_theta = next_theta.normalize();
 
-                // Push Pure Pursuit Next Target to Publisher Messages
-                tf2::Quaternion next_pose_quat;
-                next_pose_quat.setRPY(0,0,next_pose.theta);
-                next_pose_quat = next_pose_quat.normalize();
+                    pure_pursuit_msg.pose.position.x  = next_pose.x;
+                    pure_pursuit_msg.pose.position.y  = next_pose.y;
+                    pure_pursuit_msg.pose.orientation.x = next_theta.x();
+                    pure_pursuit_msg.pose.orientation.y = next_theta.y();
+                    pure_pursuit_msg.pose.orientation.z = next_theta.z();
+                    pure_pursuit_msg.pose.orientation.w = next_theta.w();
 
-                pure_pursuit_msg.pose.position.x  = next_pose.x;
-                pure_pursuit_msg.pose.position.y  = next_pose.y;
-                pure_pursuit_msg.pose.orientation.x = next_pose_quat.x();
-                pure_pursuit_msg.pose.orientation.y = next_pose_quat.y();
-                pure_pursuit_msg.pose.orientation.z = next_pose_quat.z();
-                pure_pursuit_msg.pose.orientation.w = next_pose_quat.w();
+                    // PID Controller
+                    pure_pursuit_vel = PointToPointPID(robot_pose, next_pose);
 
-                // Convert Pure Pursuit Velocity to Local Velocity
-                local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel);
+                    // LQR Controller
+                    // pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 30);
 
-                robot_vel[0] = local_vel.x;
-                robot_vel[1] = local_vel.y;
-                robot_vel[2] = local_vel.theta;
-
-                local_desired_vel_msg.linear.x = local_vel.x * cos(MATH_PI/2) + local_vel.y * sin(MATH_PI/2);
-                local_desired_vel_msg.linear.y = -1 * local_vel.x * sin(MATH_PI/2) + local_vel.y * cos(MATH_PI/2);
-                local_desired_vel_msg.angular.z = local_vel.theta;
-
-                // Obstacle Avoidance Control with WHITE Indicator
-                if(obstacle_status)
-                {
-                    // Set LED Feedback
-                    MsgJoyLED_R.intensity = 1.0;
-                    MsgJoyLED_G.intensity = 1.0;
-                    MsgJoyLED_B.intensity = 1.0;
-
-                    robot_vel[0] = obstacle_avoider_vel.x * cos(MATH_PI/2) - obstacle_avoider_vel.y * sin(MATH_PI/2);
-                    robot_vel[1] = obstacle_avoider_vel.x * sin(MATH_PI/2) + obstacle_avoider_vel.y * cos(MATH_PI/2);
+                    // Convert Pure Pursuit Velocity to Local Velocity
+                    local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel, 0.40);
+                    robot_vel[0] = local_vel.x;
+                    robot_vel[1] = local_vel.y;
                     robot_vel[2] = local_vel.theta;
+
+                    // Push Local Velocity to Publisher
+                    local_desired_vel_msg.linear.x = local_vel.x * cos(MATH_PI/2) + local_vel.y * sin(MATH_PI/2);
+                    local_desired_vel_msg.linear.y = -1 * local_vel.x * sin(MATH_PI/2) + local_vel.y * cos(MATH_PI/2);
+                    local_desired_vel_msg.angular.z = local_vel.theta;
+
+                    // Obstacle Avoidance Control with WHITE Indicator
+                    if(obstacle_status)
+                    {
+                        // Set LED Feedback
+                        MsgJoyLED_R.intensity = 1.0;
+                        MsgJoyLED_G.intensity = 1.0;
+                        MsgJoyLED_B.intensity = 1.0;
+
+                        robot_vel[0] = obstacle_avoider_vel.x * cos(MATH_PI/2) - obstacle_avoider_vel.y * sin(MATH_PI/2);
+                        robot_vel[1] = obstacle_avoider_vel.x * sin(MATH_PI/2) + obstacle_avoider_vel.y * cos(MATH_PI/2);
+                        robot_vel[2] = local_vel.theta;
+                    }
                 }
             }
 
@@ -221,6 +209,11 @@ Robot::Robot(): RosRate(100)
                 MsgJoyLED_G.intensity = 0.0;
                 MsgJoyLED_B.intensity = 0.13;  
 
+                // Push Local Velocity Publisher to Zero
+                local_desired_vel_msg.linear.x = 0.0;
+                local_desired_vel_msg.linear.y = 0.0;
+                local_desired_vel_msg.angular.z = 0.0;
+
                 // Set Robot Speed to Zero (Safety Issues)
                 for(int i = 0; i<=2; i++)
                 {
@@ -230,7 +223,7 @@ Robot::Robot(): RosRate(100)
         }
 
         // Go to Manual Control Mode
-        else
+        else 
         {
             // Go to Manual Control RUN Mode with GREEN Indicator
             if (vel_msg.StatusControl)
@@ -301,6 +294,7 @@ void Robot::Joy_Callback (const sensor_msgs::Joy::ConstPtr &joy_msg)
 
 void Robot::Path_Callback (const nav_msgs::Path::ConstPtr &path_msg)
 {
+    ClearPath(path);
     double  roll, pitch, yaw;
 
     for(int i = 0; i < path_msg->poses.size(); ++i)
@@ -483,32 +477,37 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, 
             path.x.pop(); target_pose.x = robot_pose.x;
             path.y.pop(); target_pose.y = robot_pose.y;
             path.theta.pop(); target_pose.theta = robot_pose.theta;
+
+            // Set Rumble Feedback
+            rumble_status = 1;
+            MsgJoyRumble.intensity  = 0.5;
+            prev_time = ros::Time::now();
+
             ROS_INFO("Path Finished!");
             }
         }
     }
-
     return target_pose;
 }
 
-Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, float maxSpeed)
+Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose)
 {
     Pose_t robot_vel;
-    robot_vel.x = robot_vel.y = robot_vel.theta = 0;
+    robot_vel.x = robot_vel.y = robot_vel.theta = 0.0;
 
-    float output[3] = {0, 0, 0};
+    float output[3] = {0.0, 0.0, 0.0};
 
-    float proportional[3] = {0, 0, 0};
-    float integral[3] = {0, 0, 0};
-    float derivative [3]= {0, 0, 0};
+    float proportional[3] = {0.0, 0.0, 0.0};
+    float integral[3] = {0.0, 0.0, 0.0};
+    float derivative [3]= {0.0, 0.0, 0.0};
 
-    float error[3] = {0, 0, 0};
-    static float prevError[3] = {0, 0, 0};
-    static float sumError[3] = {0, 0, 0};
+    float error[3] = {0.0, 0.0, 0.0};
+    static float prevError[3] = {0.0, 0.0, 0.0};
+    static float sumError[3] = {0.0, 0.0, 0.0};
 
-    float kp[3] = {280, 280, 15};
-    float ki[3] = {0.005, 0.005, 0};
-    float kd[3] = {135, 135, 8};
+    float kp[3] = {2.6, 2.6, 0.1};
+    float ki[3] = {0.0005, 0.0005, 0.0};
+    float kd[3] = {1.7, 1.7, 0.035};
 
     error[0] = target_pose.x - robot_pose.x;
     error[1] = target_pose.y - robot_pose.y;
@@ -535,30 +534,11 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
         output[i] = proportional[i] + integral[i] + derivative[i];
     }
 
-    // Speed Limiter Only
-    for(int i=0 ; i<=1 ; i++){
-        if(output[i] >= maxSpeed){
-            output[i] = maxSpeed;
-        }
-        else if(output[i] <= -maxSpeed){
-            output[i] = -maxSpeed;
-        }
-        if(output[2] >= 25){
-            output[2] = 25;
-        }
-        else if(output[2] <= -25){
-            output[2] = -25;
-        }
-    }
-
-    robot_vel.x = output[0];
-    robot_vel.y = output[1];
-    robot_vel.theta = output[2];
-
-    // std::cout << "Pose theta = " << robot_pose.theta << " Target theta = " << target_pose.theta << std::endl;
+    robot_vel.x = output[0]*100;
+    robot_vel.y = output[1]*100;
+    robot_vel.theta = output[2]*100;
 
     return robot_vel;
-
 }
 
 Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, float maxSpeed)
@@ -672,7 +652,7 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
 
 }
 
-Robot::Pose_t Robot::Global_to_Local_Vel(Pose_t robot_pose, Pose_t global_vel)
+Robot::Pose_t Robot::Global_to_Local_Vel(Pose_t robot_pose, Pose_t global_vel, float max_vel)
 {
     Pose_t local_vel;
 
@@ -680,20 +660,31 @@ Robot::Pose_t Robot::Global_to_Local_Vel(Pose_t robot_pose, Pose_t global_vel)
     local_vel.y = global_vel.x * cos(robot_pose.theta) + global_vel.y * sin(robot_pose.theta);
     local_vel.theta = global_vel.theta;
 
-    // Speed Limiter Only
-    if(local_vel.x >= 30){
-        local_vel.x = 30;
+    if(local_vel.x >= max_vel*100)
+    {
+        local_vel.x = max_vel*100;
     }
-    else if(local_vel.x <= -30){
-        local_vel.x = -30;
-    }
-
-    if(local_vel.y >= 30){
-        local_vel.y = 30;
-    }
-    else if(local_vel.y <= -30){
-        local_vel.y = -30;
+    else if(local_vel.x <= -max_vel*100)
+    {
+        local_vel.x = -max_vel*100;
     }
 
+    if(local_vel.y >= max_vel*100)
+    {
+        local_vel.y = max_vel*100;
+    }
+    else if(local_vel.y <= -max_vel*100)
+    {
+        local_vel.y = -max_vel*100;
+    }
+
+    if(local_vel.theta >= 0.10*100)
+    {
+        local_vel.theta = 0.10*100;
+    }
+    else if(local_vel.theta <= -0.10*100)
+    {
+        local_vel.theta = -0.10*100;
+    }
     return local_vel;
 }
