@@ -121,7 +121,7 @@ private:
     sensor_msgs::JoyFeedback        MsgJoyRumble;
     sensor_msgs::JoyFeedbackArray   MsgJoyFeedbackArray;
     geometry_msgs::PoseStamped      origin_msg;
-    geometry_msgs::Twist            pure_pursuit_msg; 
+    geometry_msgs::PoseStamped      pure_pursuit_msg; 
     geometry_msgs::Twist            local_desired_vel_msg;
 
     main_controller::ControllerData         vel_msg;

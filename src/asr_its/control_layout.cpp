@@ -19,7 +19,7 @@ Robot::Robot(): RosRate(100)
     Pub_Vel            = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
     Pub_Joy_Feedback   = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
     Pub_Origin         = Nh.advertise<geometry_msgs::PoseStamped>("/goal", 1);
-    Pub_Pure_Pursuit   = Nh.advertise<geometry_msgs::Twist>("/pure_pursuit_vel", 10);
+    Pub_Pure_Pursuit   = Nh.advertise<geometry_msgs::PoseStamped>("/pure_pursuit_pose", 1);
     Pub_Local_Desired_Vel = Nh.advertise<geometry_msgs::Twist>("/main_controller/local_desired_vel", 10);
 
     // Initialize Speed Variable
@@ -171,27 +171,22 @@ Robot::Robot(): RosRate(100)
                     next_pose = PurePursuit(robot_pose, path, 0.1, obstacle_status);
                 }
 
-                // if(path_left <= 1)
-                // {
-                //     distance_left = sqrt(pow((next_pose.x - robot_pose.x), 2) + pow((next_pose.y - robot_pose.y), 2));
-                //     if(distance_left <= 0.072)
-                //     {
-
-                //         ClearPath(path);
-                //     }
-                // }
-
-                // else
-                // {
                 // Pure Pursuit PID
                 // pure_pursuit_vel = PointToPointPID(robot_pose, next_pose, 30);
                 // LQR PID
                 pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 30);
 
-                // Push Pure Pursuit Velocity to Publisher Messages
-                pure_pursuit_msg.linear.x  = (int) pure_pursuit_vel.x;
-                pure_pursuit_msg.linear.y  = (int) pure_pursuit_vel.y;
-                pure_pursuit_msg.angular.z = (int) pure_pursuit_vel.theta;
+                // Push Pure Pursuit Next Target to Publisher Messages
+                tf2::Quaternion next_pose_quat;
+                next_pose_quat.setRPY(0,0,next_pose.theta);
+                next_pose_quat = next_pose_quat.normalize();
+
+                pure_pursuit_msg.pose.position.x  = next_pose.x;
+                pure_pursuit_msg.pose.position.y  = next_pose.y;
+                pure_pursuit_msg.pose.orientation.x = next_pose_quat.x();
+                pure_pursuit_msg.pose.orientation.y = next_pose_quat.y();
+                pure_pursuit_msg.pose.orientation.z = next_pose_quat.z();
+                pure_pursuit_msg.pose.orientation.w = next_pose_quat.w();
 
                 // Convert Pure Pursuit Velocity to Local Velocity
                 local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel);
@@ -216,7 +211,6 @@ Robot::Robot(): RosRate(100)
                     robot_vel[1] = obstacle_avoider_vel.x * sin(MATH_PI/2) + obstacle_avoider_vel.y * cos(MATH_PI/2);
                     robot_vel[2] = local_vel.theta;
                 }
-                // }
             }
 
             // Pause AUTONOMOUS Mode with RED Indicator
@@ -512,9 +506,9 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
     static float prevError[3] = {0, 0, 0};
     static float sumError[3] = {0, 0, 0};
 
-    float kp[3] = {300, 300, 20};
-    float ki[3] = {0, 0, 0};
-    float kd[3] = {160, 160, 7};
+    float kp[3] = {280, 280, 15};
+    float ki[3] = {0.005, 0.005, 0};
+    float kd[3] = {135, 135, 8};
 
     error[0] = target_pose.x - robot_pose.x;
     error[1] = target_pose.y - robot_pose.y;
@@ -549,12 +543,12 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose, floa
         else if(output[i] <= -maxSpeed){
             output[i] = -maxSpeed;
         }
-    if(output[2] >= 20){
-        output[2] = 20;
-    }
-    else if(output[2] <= -15){
-        output[2] = -15;
-    }
+        if(output[2] >= 25){
+            output[2] = 25;
+        }
+        else if(output[2] <= -25){
+            output[2] = -25;
+        }
     }
 
     robot_vel.x = output[0];
@@ -685,6 +679,21 @@ Robot::Pose_t Robot::Global_to_Local_Vel(Pose_t robot_pose, Pose_t global_vel)
     local_vel.x = global_vel.x * sin(robot_pose.theta) - global_vel.y * cos(robot_pose.theta);
     local_vel.y = global_vel.x * cos(robot_pose.theta) + global_vel.y * sin(robot_pose.theta);
     local_vel.theta = global_vel.theta;
+
+    // Speed Limiter Only
+    if(local_vel.x >= 30){
+        local_vel.x = 30;
+    }
+    else if(local_vel.x <= -30){
+        local_vel.x = -30;
+    }
+
+    if(local_vel.y >= 30){
+        local_vel.y = 30;
+    }
+    else if(local_vel.y <= -30){
+        local_vel.y = -30;
+    }
 
     return local_vel;
 }
