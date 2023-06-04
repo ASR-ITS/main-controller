@@ -161,7 +161,7 @@ void SerialReceiveEvent(const ros::TimerEvent &event)
     // printf("received %i bytes: %s\n", n, (char *)buf);
 
     std::string sLocal[5];
-    char *token = strtok((char *)buf, ",");
+    char *token = strtok((char *)buf, ",\n");
     int data_len = 0;
     while (token != NULL)
     {
