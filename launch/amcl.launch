@@ -11,8 +11,8 @@
 
     <param name="initial_pose_a"           value="0.0"/>
     
-    <param name="update_min_d" value="-0.01"/>
-    <param name="update_min_a" value="-0.05"/>
+    <param name="update_min_d" value="0.01"/>
+    <param name="update_min_a" value="0.05"/>
 
     <param name="odom_alpha_1" value="0.005"/>
     <param name="odom_alpha_2" value="0.005"/>

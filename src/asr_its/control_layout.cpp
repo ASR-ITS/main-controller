@@ -7,14 +7,15 @@ Robot::Robot(): RosRate(200)
     ROS_INFO("Robot Main Controller");
     
     // Subscriber & Publisher
-    Sub_Joy            = Nh.subscribe("/joy", 18, &Robot::Joy_Callback, this);
+    Sub_Joy               = Nh.subscribe("/joy", 18, &Robot::Joy_Callback, this);
 
-    Sub_Path           = Nh.subscribe("/path", 10, &Robot::Path_Callback, this);
-    Sub_Pose           = Nh.subscribe("/amcl_pose", 10, &Robot::Pose_Callback, this);
+    Sub_Path              = Nh.subscribe("/path", 10, &Robot::Path_Callback, this);
+    Sub_Pose              = Nh.subscribe("/amcl_pose", 10, &Robot::Pose_Callback, this);
+    Sub_Pose_Odom         = Nh.subscribe("/odom", 10, &Robot::Pose_Odom_Callback, this);
 
-    Sub_Crashed        = Nh.subscribe("/crashed", 1, &Robot::Crashed_Status_Callback, this);
-    Sub_Obstacle       = Nh.subscribe("/obstacle_detected", 1, &Robot::Obstacle_Status_Callback, this);
-    Sub_Obs_Vel        = Nh.subscribe("/velocity_obstacle/opt_vel", 10, &Robot::Obstacle_Vel_Callback, this);
+    Sub_Crashed           = Nh.subscribe("/crashed", 1, &Robot::Crashed_Status_Callback, this);
+    Sub_Obstacle          = Nh.subscribe("/obstacle_detected", 1, &Robot::Obstacle_Status_Callback, this);
+    Sub_Obs_Vel           = Nh.subscribe("/velocity_obstacle/opt_vel", 10, &Robot::Obstacle_Vel_Callback, this);
 
     Pub_Vel               = Nh.advertise<main_controller::ControllerData>("robot/cmd_vel", 10);
     Pub_Joy_Feedback      = Nh.advertise<sensor_msgs::JoyFeedbackArray>("/set_feedback", 10);
@@ -86,6 +87,15 @@ Robot::Robot(): RosRate(200)
         }
         Controller.prev_button[OPTIONS] = Controller.Buttons[OPTIONS];
 
+        // Reset local Odom
+        if (Controller.Buttons[SQUARE] == 0 && Controller.prev_button[SQUARE] == 1)
+        {
+            robot_pose_odom.x -= robot_pose_odom.x;
+            robot_pose_odom.y -= robot_pose_odom.y;
+            robot_pose_odom.theta -= robot_pose_odom.theta;
+        }
+        Controller.prev_button[SQUARE] = Controller.Buttons[SQUARE];
+
         // Set RTH Mode Using SHARE Button
         if (Controller.Buttons[SHARE] == 1 && Controller.prev_button[SHARE] == 0)
         {
@@ -124,13 +134,13 @@ Robot::Robot(): RosRate(200)
             rumble_status = 0;
         }
 
-        // Clear Path if Robot CRASHED
-        if (prev_crashed == 0 && crashed_status == 1)
-        {
-            // DEBUG
-            ClearPath(path);
-            ROS_INFO("Robot stopped because path is closed. Recalculating path... ");
-        }
+        // // Clear Path if Robot CRASHED
+        // if (prev_crashed == 0 && crashed_status == 1)
+        // {
+        //     // DEBUG
+        //     ClearPath(path);
+        //     ROS_INFO("Robot stopped because path is closed. Recalculating path... ");
+        // }
         prev_crashed = crashed_status;
 
         // Go to Autonomous Mode
@@ -176,7 +186,7 @@ Robot::Robot(): RosRate(200)
                     // pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 30);
 
                     // Convert Pure Pursuit Velocity to Local Velocity
-                    local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel, 0.40);
+                    local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel, 0.30);
                     robot_vel[0] = local_vel.x;
                     robot_vel[1] = local_vel.y;
                     robot_vel[2] = local_vel.theta;
@@ -234,9 +244,9 @@ Robot::Robot(): RosRate(200)
                 MsgJoyLED_B.intensity = 0.13;
 
                 // Set Robot Speed from Joy Axis
-                robot_vel[0] = -1 * Controller.Axis[0] * 30;
-                robot_vel[1] = Controller.Axis[1] * 30;
-                robot_vel[2] = Controller.Axis[2] * 15;
+                robot_vel[0] = -1 * Controller.Axis[0] * 45;
+                robot_vel[1] = Controller.Axis[1] * 45;
+                robot_vel[2] = Controller.Axis[2] * 20;
             }
 
             // Go to Manual Control LOCK Mode with RED Indicator
@@ -333,6 +343,25 @@ void Robot::Pose_Callback (const geometry_msgs::PoseWithCovarianceStamped::Const
     robot_pose.x = pose_msg->pose.pose.position.x;
     robot_pose.y = pose_msg->pose.pose.position.y;   
     robot_pose.theta = yaw;
+}
+
+void Robot::Pose_Odom_Callback (const nav_msgs::Odometry::ConstPtr &pose_msg)
+{
+    double  roll, pitch, yaw;
+
+    // Convert Quaternion to Euler Yaw (Rad)
+    tf::Quaternion q(
+        pose_msg->pose.pose.orientation.x,
+        pose_msg->pose.pose.orientation.y,
+        pose_msg->pose.pose.orientation.z,
+        pose_msg->pose.pose.orientation.w);
+    tf::Matrix3x3 m(q);
+
+    m.getRPY(roll, pitch, yaw);
+    // Push Subscriber Topics to Current Robot Pose Variable
+    robot_pose_odom.x = pose_msg->pose.pose.position.x;
+    robot_pose_odom.y = pose_msg->pose.pose.position.y;   
+    robot_pose_odom.theta = yaw;
 }
 
 void Robot::Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status_msg)
@@ -581,11 +610,11 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
 
     // Define the Q and R matrices
     // P2P Q = diag(30, 30, 10)
-    // unchecked PTrack diag(150, 150, 25)
+    // PTrack diag(225, 225, 25)
     Eigen::MatrixXd Q(3, 3);
     Q << 225, 0, 0,
          0, 225, 0,
-         0, 0, 25;
+         0, 0, 50;
 
     Eigen::MatrixXd R(3, 3);
     R << 1, 0, 0,

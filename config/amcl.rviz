@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /Map1
         - /Obstacles1
       Splitter Ratio: 0.5
     Tree Height: 371
@@ -58,7 +59,7 @@ Visualization Manager:
       Draw Behind: false
       Enabled: true
       Name: Map
-      Topic: /map
+      Topic: /costmap_node/costmap/costmap
       Unreliable: false
       Use Timestamp: false
       Value: true
@@ -294,7 +295,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 12.068086624145508
+      Distance: 18.71592140197754
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

@@ -89,6 +89,7 @@ private:
     DS4_t Controller;
     Path_t path;
     Pose_t robot_pose;
+    Pose_t robot_pose_odom;
     Pose_t next_pose;
 
     Pose_t local_vel;
@@ -100,6 +101,7 @@ private:
     ros::Subscriber     Sub_Joy_Battery;
     ros::Subscriber     Sub_Path;
     ros::Subscriber     Sub_Pose;
+    ros::Subscriber     Sub_Pose_Odom;
     ros::Subscriber     Sub_Crashed;
     ros::Subscriber     Sub_Obstacle;
     ros::Subscriber     Sub_Obs_Vel;
@@ -132,6 +134,7 @@ private:
     void Joy_Callback             (const sensor_msgs::Joy::ConstPtr &joy_msg);
     void Path_Callback            (const nav_msgs::Path::ConstPtr &path_msg);
     void Pose_Callback            (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);
+    void Pose_Odom_Callback       (const nav_msgs::Odometry::ConstPtr &pose_msg);
     void Crashed_Status_Callback  (const std_msgs::Bool::ConstPtr &crashed_msg);
     void Obstacle_Status_Callback (const std_msgs::Bool::ConstPtr &obs_status_msg);
     void Obstacle_Vel_Callback    (const geometry_msgs::Twist::ConstPtr &obs_vel_msg);
