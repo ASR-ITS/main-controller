@@ -128,9 +128,10 @@ private:
     void ClearPath                (Path_t &path);
     Pose_t PurePursuit            (Pose_t robotPose, Path_t &path, float offset, bool obstacle);
     Pose_t PointToPointPID        (Pose_t robotPose, Pose_t targetPose);
+    Pose_t PointToPointPIDV2      (Pose_t robot_pose, Pose_t target_pose);
     Pose_t PointToPointLQR        (Pose_t robotPose, Pose_t targetPose, float maxSpeed);
-    Pose_t Global_to_Local_Vel    (Pose_t robot_pose, Pose_t global_vel, float max_vel);
-
+    Pose_t Global_to_Local_Vel    (Pose_t robot_pose, Pose_t global_vel);
+    
     void Joy_Callback             (const sensor_msgs::Joy::ConstPtr &joy_msg);
     void Path_Callback            (const nav_msgs::Path::ConstPtr &path_msg);
     void Pose_Callback            (const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &pose_msg);

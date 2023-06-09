@@ -172,6 +172,7 @@ Robot::Robot(): RosRate(200)
                     next_theta.setRPY(0, 0, next_pose.theta);
                     next_theta = next_theta.normalize();
 
+                    pure_pursuit_msg.header.frame_id  = "map";
                     pure_pursuit_msg.pose.position.x  = next_pose.x;
                     pure_pursuit_msg.pose.position.y  = next_pose.y;
                     pure_pursuit_msg.pose.orientation.x = next_theta.x();
@@ -180,13 +181,16 @@ Robot::Robot(): RosRate(200)
                     pure_pursuit_msg.pose.orientation.w = next_theta.w();
 
                     // PID Controller
-                    pure_pursuit_vel = PointToPointPID(robot_pose, next_pose);
+                    // pure_pursuit_vel = PointToPointPID(robot_pose, next_pose);
+
+                    //PID Controller by Nawab
+                    // pure_pursuit_vel = PointToPointPIDV2(robot_pose, next_pose);
 
                     // LQR Controller
-                    // pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 30);
+                    pure_pursuit_vel = PointToPointLQR(robot_pose, next_pose, 30);
 
                     // Convert Pure Pursuit Velocity to Local Velocity
-                    local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel, 0.30);
+                    local_vel = Global_to_Local_Vel(robot_pose, pure_pursuit_vel);
                     robot_vel[0] = local_vel.x;
                     robot_vel[1] = local_vel.y;
                     robot_vel[2] = local_vel.theta;
@@ -206,9 +210,10 @@ Robot::Robot(): RosRate(200)
 
                         robot_vel[0] = obstacle_avoider_vel.x * cos(MATH_PI/2) - obstacle_avoider_vel.y * sin(MATH_PI/2);
                         robot_vel[1] = obstacle_avoider_vel.x * sin(MATH_PI/2) + obstacle_avoider_vel.y * cos(MATH_PI/2);
-                        robot_vel[2] = local_vel.theta;
+                        robot_vel[2] = obstacle_avoider_vel.theta;
                     }
                 }
+                
             }
 
             // Pause AUTONOMOUS Mode with RED Indicator
@@ -265,10 +270,18 @@ Robot::Robot(): RosRate(200)
             }
         }
 
-        // Push Robot Variable to Publisher Var
+        // Limit Robot Speed to 30 cm/s
         for(int i = 0 ; i<=2 ; i++)
         {
             vel_msg.data.at(i) = robot_vel[i];
+            if(vel_msg.data.at(i) >= 30)
+            {
+                vel_msg.data.at(i) = 30;
+            }
+            else if(vel_msg.data.at(i) <= -30)
+            {
+                vel_msg.data.at(i) = -30;
+            }
         }
 
         MsgJoyFeedbackArray.array.at(0) = MsgJoyLED_R;
@@ -277,6 +290,7 @@ Robot::Robot(): RosRate(200)
         MsgJoyFeedbackArray.array.at(3) = MsgJoyRumble;
 
         // Publish Topics
+        
         Pub_Vel.publish(vel_msg);
         Pub_Pure_Pursuit.publish(pure_pursuit_msg);
         Pub_Joy_Feedback.publish(MsgJoyFeedbackArray);
@@ -398,6 +412,7 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, 
     target_pose = robot_pose;
 
     float distance = 0.0;
+    float delta_heading = 0.0;
     float theta_error = 0.0;
     float dx, dy, dot_product;
     int pathLeft = path.x.size();
@@ -405,6 +420,7 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, 
     // // Collision Avoidance Mode
     if(obstacle)
     {
+        offset *= 10;
         while(pathLeft > 1)
         {
             // Check for lookahead point
@@ -448,6 +464,8 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, 
             }
         }
 
+        //Untuk Nawab 
+        //(distance <= 0.1 && theta_error <= MATH_PI/18 && theta_error >= -MATH_PI/18)
         if(distance <= 0.033 && theta_error <= MATH_PI/36 && theta_error >= -MATH_PI/36)
         {
             // Stop the Robot and Clear Path
@@ -461,13 +479,30 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, 
     // Normal Mode
     else
     {
+        // Define Next Target Pose
         target_pose.x = path.x.front();
         target_pose.y = path.y.front();
         target_pose.theta = path.theta.front();
-        distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
+
+        // Check for Distance Error
+        distance = sqrt(pow((path.x.front() - robot_pose.x), 2) + pow((path.y.front() - robot_pose.y), 2));
         
+        // Check for Theta Error
+        // delta_heading = path.theta.front() - robot_pose.theta;        
+        // if(abs(delta_heading) >= MATH_PI)
+        // {
+        //     if(delta_heading > 0)
+        //     {
+        //         delta_heading = delta_heading - 2*MATH_PI;
+        //     }
+        //     else
+        //     {
+        //         delta_heading = delta_heading + 2*MATH_PI;
+        //     }
+        // }  
+
         if(pathLeft > 1)
-        {    
+        {   
             while(distance < offset)
             {
                 path.x.pop(); target_pose.x = path.x.front();
@@ -478,6 +513,7 @@ Robot::Pose_t Robot::PurePursuit(Pose_t robot_pose, Path_t &path, float offset, 
                 distance = sqrt(pow((target_pose.x - robot_pose.x), 2) + pow((target_pose.y - robot_pose.y), 2));
             }
         }
+
         else
         {
             target_pose.x = path.x.front();
@@ -534,13 +570,14 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose)
     static float prevError[3] = {0.0, 0.0, 0.0};
     static float sumError[3] = {0.0, 0.0, 0.0};
 
-    float kp[3] = {2.6, 2.6, 0.1};
-    float ki[3] = {0.0005, 0.0005, 0.0};
-    float kd[3] = {1.7, 1.7, 0.035};
+    float kp[3] = {2.3, 2.3, 0.2}; //{2.5, 2.5, 0.2}
+    float ki[3] = {0.0, 0.0, 0.0}; // {0.0005, 0.0005, 0.0};
+    float kd[3] = {1.8, 1.8, 0.13}; // {1.8, 1.8, 0.13}
+
 
     error[0] = target_pose.x - robot_pose.x;
     error[1] = target_pose.y - robot_pose.y;
-    error[2] = target_pose.theta - robot_pose.theta; 
+    error[2] = target_pose.theta - robot_pose.theta;
 
     if(abs(error[2]) >= MATH_PI){
         if(error[2] > 0){
@@ -563,10 +600,59 @@ Robot::Pose_t Robot::PointToPointPID(Pose_t robot_pose, Pose_t target_pose)
         output[i] = proportional[i] + integral[i] + derivative[i];
     }
 
+    // Get Theta Control Only if Heading Error more than 36 degree
+    if(error[2] >= MATH_PI/6 || error[2] <= -MATH_PI/6)
+    {
+        output[0] = 0.0;
+        output[1] = 0.0;
+    }
+    
     robot_vel.x = output[0]*100;
     robot_vel.y = output[1]*100;
     robot_vel.theta = output[2]*100;
 
+    return robot_vel;
+}
+
+Robot::Pose_t Robot::PointToPointPIDV2(Pose_t robot_pose, Pose_t target_pose){
+    Pose_t robot_vel;
+
+    robot_vel.x = robot_vel.y = robot_vel.theta = 0.0;
+
+    float output[2] = {0.0, 0.0};
+
+    float proportional[2] = {0.0, 0.0};
+    float integral[2] = {0.0, 0.0};
+    float derivative [2]= {0.0, 0.0};
+    
+    float error[2] = {0.0, 0.0}; //Error Heading = [0], Error Distance = [1]
+    static float prevError[2] = {0.0, 0.0};
+    static float sumError[2] = {0.0, 0.0};
+
+    float kp[2] = {0.2, 0.5};
+    float ki[2] = {0, 0};
+    float kd[2] = {0.17, 0};
+
+    error[0] = atan2((target_pose.y - robot_pose.y), (target_pose.x - robot_pose.x));
+    error[1] = sqrt(pow((target_pose.x - robot_pose.y), 2) + pow((target_pose.y - robot_pose.y), 2));
+
+    for(int i=0 ; i<=1 ; i++){
+        sumError[i] += error[i];
+
+        proportional[i] = kp[i] * error[i];
+        integral[i] = ki[i] * sumError[i];
+        derivative[i] = kd[i] * (error[i] - prevError[i]);
+
+        prevError[i] = error[i];
+
+        output[i] = proportional[i] + integral[i] + derivative[i];
+    }
+
+    robot_vel.theta = output[0];
+    robot_vel.x = output[1]*100;
+    robot_vel.y = 0;
+
+    std::cout << "[" << robot_vel.x << "," << robot_vel.y << "," << robot_vel.theta << "]" << std :: endl;
     return robot_vel;
 }
 
@@ -610,7 +696,7 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
 
     // Define the Q and R matrices
     // P2P Q = diag(30, 30, 10)
-    // PTrack diag(225, 225, 25)
+    // PTrack diag(225, 225, 50)
     Eigen::MatrixXd Q(3, 3);
     Q << 225, 0, 0,
          0, 225, 0,
@@ -681,7 +767,7 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
 
 }
 
-Robot::Pose_t Robot::Global_to_Local_Vel(Pose_t robot_pose, Pose_t global_vel, float max_vel)
+Robot::Pose_t Robot::Global_to_Local_Vel(Pose_t robot_pose, Pose_t global_vel)
 {
     Pose_t local_vel;
 
@@ -689,31 +775,5 @@ Robot::Pose_t Robot::Global_to_Local_Vel(Pose_t robot_pose, Pose_t global_vel, f
     local_vel.y = global_vel.x * cos(robot_pose.theta) + global_vel.y * sin(robot_pose.theta);
     local_vel.theta = global_vel.theta;
 
-    if(local_vel.x >= max_vel*100)
-    {
-        local_vel.x = max_vel*100;
-    }
-    else if(local_vel.x <= -max_vel*100)
-    {
-        local_vel.x = -max_vel*100;
-    }
-
-    if(local_vel.y >= max_vel*100)
-    {
-        local_vel.y = max_vel*100;
-    }
-    else if(local_vel.y <= -max_vel*100)
-    {
-        local_vel.y = -max_vel*100;
-    }
-
-    if(local_vel.theta >= 0.10*100)
-    {
-        local_vel.theta = 0.10*100;
-    }
-    else if(local_vel.theta <= -0.10*100)
-    {
-        local_vel.theta = -0.10*100;
-    }
     return local_vel;
 }
