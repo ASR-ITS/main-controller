@@ -700,7 +700,7 @@ Robot::Pose_t Robot::PointToPointLQR(Pose_t robot_pose, Pose_t target_pose, floa
     Eigen::MatrixXd Q(3, 3);
     Q << 225, 0, 0,
          0, 225, 0,
-         0, 0, 50;
+         0, 0, 25;
 
     Eigen::MatrixXd R(3, 3);
     R << 1, 0, 0,

@@ -97,7 +97,6 @@ def listener():
                         "Goal": data_goal}         # Tambah satu data "Variabel: data_variabel"
             
             data.loc[len(data)] = new_data
-            print(directory)
             time.sleep(0.1)
 
     except KeyboardInterrupt:
